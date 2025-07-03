@@ -134,6 +134,36 @@
           "type": "string",
           "default": "lib",
           "description": "Path to scan for existing entity files (supports multiple paths separated by comma)"
+        },
+        "flutter-json-bean-factory.isOpenNullable": {
+          "type": "boolean",
+          "default": false,
+          "description": "Generate nullable fields (adds ? to field types)"
+        },
+        "flutter-json-bean-factory.setDefault": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use default values for fields"
+        },
+        "flutter-json-bean-factory.stringDefaultValue": {
+          "type": "string",
+          "default": "''",
+          "description": "Default value for String fields"
+        },
+        "flutter-json-bean-factory.intDefaultValue": {
+          "type": "string",
+          "default": "0",
+          "description": "Default value for int fields"
+        },
+        "flutter-json-bean-factory.boolDefaultValue": {
+          "type": "string",
+          "default": "false",
+          "description": "Default value for bool fields"
+        },
+        "flutter-json-bean-factory.listDefaultValue": {
+          "type": "string",
+          "default": "[]",
+          "description": "Default value for List fields"
         }
       }
     }

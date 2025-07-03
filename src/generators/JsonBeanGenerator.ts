@@ -4,15 +4,18 @@ import * as path from 'path';
 import { JsonParser, JsonClass } from '../parsers/JsonParser';
 import { DartCodeGenerator, GeneratorConfig } from './DartCodeGenerator';
 import { FlutterProjectDetector } from '../utils/FlutterProjectDetector';
+import { JsonInputDialog, JsonInputResult } from '../ui/JsonInputDialog';
 
 export class JsonBeanGenerator {
     private jsonParser: JsonParser;
     private codeGenerator!: DartCodeGenerator;
     private projectDetector: FlutterProjectDetector;
+    private context?: vscode.ExtensionContext;
 
-    constructor() {
+    constructor(context?: vscode.ExtensionContext) {
         this.jsonParser = new JsonParser();
         this.projectDetector = new FlutterProjectDetector();
+        this.context = context;
         this.updateConfig();
     }
 
@@ -21,34 +24,26 @@ export class JsonBeanGenerator {
      */
     async generateFromJson(uri?: vscode.Uri): Promise<void> {
         try {
-            // Get JSON input from user
-            const jsonInput = await this.getJsonInput();
-            if (!jsonInput) {
+            // Show enhanced input dialog
+            const dialog = new JsonInputDialog(this.context!);
+            const result = await dialog.show();
+
+            if (!result) {
                 return;
             }
 
-            // Validate JSON
-            const validation = this.jsonParser.validateJson(jsonInput);
-            if (!validation.isValid) {
-                vscode.window.showErrorMessage(`Invalid JSON: ${validation.error}`);
-                return;
-            }
-
-            // Get class name from user
-            const className = await this.getClassName();
-            if (!className) {
-                return;
-            }
+            // Update generator config with dialog settings
+            this.updateGeneratorConfig(result.settings);
 
             // Parse JSON and generate classes
-            const rootClass = this.jsonParser.parseJson(jsonInput, className);
+            const rootClass = this.jsonParser.parseJson(result.jsonString, result.className);
             const allClasses = this.jsonParser.getAllClasses(rootClass);
 
             // Generate and save files
             await this.generateAndSaveFiles(allClasses, uri);
 
             vscode.window.showInformationMessage(
-                `Successfully generated ${allClasses.length} Dart class(es) for ${className}`
+                `Successfully generated ${allClasses.length} Dart class(es) for ${result.className}`
             );
 
         } catch (error) {
@@ -203,6 +198,27 @@ export class JsonBeanGenerator {
 
     private updateConfig(): void {
         const config = this.getConfig();
+        const packageName = this.projectDetector.getPackageName() || 'your_app';
+        this.codeGenerator = new DartCodeGenerator(config, packageName);
+    }
+
+    private updateGeneratorConfig(settings: any): void {
+        const config = this.getConfig();
+
+        // Update config with dialog settings
+        if (settings.isOpenNullable !== undefined) {
+            config.forceNonNullable = !settings.isOpenNullable;
+        }
+
+        // Apply default values if setDefault is enabled
+        if (settings.setDefault) {
+            // Store default values for use in code generation
+            (config as any).stringDefaultValue = settings.stringDefaultValue || "''";
+            (config as any).intDefaultValue = settings.intDefaultValue || '0';
+            (config as any).boolDefaultValue = settings.boolDefaultValue || 'false';
+            (config as any).listDefaultValue = settings.listDefaultValue || '[]';
+        }
+
         const packageName = this.projectDetector.getPackageName() || 'your_app';
         this.codeGenerator = new DartCodeGenerator(config, packageName);
     }

@@ -5,7 +5,7 @@ import { FlutterProjectDetector } from './utils/FlutterProjectDetector';
 export function activate(context: vscode.ExtensionContext) {
     console.log('Flutter JSON Bean Factory extension is now active!');
 
-    const generator = new JsonBeanGenerator();
+    const generator = new JsonBeanGenerator(context);
     const projectDetector = new FlutterProjectDetector();
 
     // Register command for generating Dart bean from JSON

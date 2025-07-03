@@ -677,19 +677,22 @@ ${properties.map(prop => `      '${prop.name}': entity.${prop.name}`).join(',\n'
     }
 
     private getDefaultValue(prop: JsonProperty): string {
+        // Check for custom default values from settings
+        const customConfig = this.config as any;
+
         if (prop.isArray) {
-            return '[]';
+            return customConfig.listDefaultValue || '[]';
         }
 
         switch (prop.dartType) {
             case 'int':
-                return '0';
+                return customConfig.intDefaultValue || '0';
             case 'double':
-                return '0.0';
+                return customConfig.intDefaultValue || '0.0';
             case 'String':
-                return "''";
+                return customConfig.stringDefaultValue || "''";
             case 'bool':
-                return 'false';
+                return customConfig.boolDefaultValue || 'false';
             default:
                 if (prop.isNestedObject) {
                     // 为嵌套对象添加Entity后缀
@@ -714,25 +717,33 @@ ${properties.map(prop => `      '${prop.name}': entity.${prop.name}`).join(',\n'
             const fieldName = camelCaseName !== prop.originalJsonKey ? camelCaseName : prop.originalJsonKey; // 使用驼峰命名的字段名
             const varName = this.toCamelCase(prop.originalJsonKey);
 
+            // 对于dynamic类型，不添加?标记（原版风格）
+            const typeNullString = prop.dartType === 'dynamic' ? '' : '?';
+
             if (prop.isArray) {
                 if (prop.isNestedObject && prop.arrayElementType) {
                     // 对于嵌套对象数组，使用简洁的类名（单文件模式）
                     const simpleElementType = this.getNestedClassName(prop.arrayElementType);
-                    parts.push(`\tfinal List<${simpleElementType}>? ${varName} = (json['${jsonKey}'] as List<dynamic>?)?.map((e) => jsonConvert.convert<${simpleElementType}>(e) as ${simpleElementType}).toList();`);
+                    parts.push(`\tfinal List<${simpleElementType}>${typeNullString} ${varName} = (json['${jsonKey}'] as List<dynamic>?)?.map((e) => jsonConvert.convert<${simpleElementType}>(e) as ${simpleElementType}).toList();`);
                 } else {
                     // 对于基础类型数组
-                    parts.push(`\tfinal List<${prop.arrayElementType}>? ${varName} = jsonConvert.convert<List<${prop.arrayElementType}>>(json['${jsonKey}']);`);
+                    parts.push(`\tfinal List<${prop.arrayElementType}>${typeNullString} ${varName} = jsonConvert.convert<List<${prop.arrayElementType}>>(json['${jsonKey}']);`);
                 }
             } else if (prop.isNestedObject && prop.nestedClass) {
                 const simpleType = this.getNestedClassName(prop.dartType);
-                parts.push(`\tfinal ${simpleType}? ${varName} = jsonConvert.convert<${simpleType}>(json['${jsonKey}']);`);
+                parts.push(`\tfinal ${simpleType}${typeNullString} ${varName} = jsonConvert.convert<${simpleType}>(json['${jsonKey}']);`);
             } else {
-                parts.push(`\tfinal ${prop.dartType}? ${varName} = jsonConvert.convert<${prop.dartType}>(json['${jsonKey}']);`);
+                parts.push(`\tfinal ${prop.dartType}${typeNullString} ${varName} = jsonConvert.convert<${prop.dartType}>(json['${jsonKey}']);`);
             }
 
-            parts.push(`\tif (${varName} != null) {`);
-            parts.push(`\t\t${instanceName}.${fieldName} = ${varName};`);
-            parts.push(`\t}`);
+            // 对于dynamic类型，不需要null检查（原版风格）
+            if (prop.dartType === 'dynamic') {
+                parts.push(`\t${instanceName}.${fieldName} = ${varName};`);
+            } else {
+                parts.push(`\tif (${varName} != null) {`);
+                parts.push(`\t\t${instanceName}.${fieldName} = ${varName};`);
+                parts.push(`\t}`);
+            }
         }
 
         parts.push(`\treturn ${instanceName};`);
@@ -754,9 +765,11 @@ ${properties.map(prop => `      '${prop.name}': entity.${prop.name}`).join(',\n'
             const fieldName = camelCaseName !== prop.originalJsonKey ? camelCaseName : prop.originalJsonKey; // 使用驼峰命名的字段名
 
             if (prop.isArray && prop.isNestedObject) {
-                parts.push(`\tdata['${jsonKey}'] = entity.${fieldName}?.map((e) => e.toJson()).toList();`);
+                // 对于数组字段，使用正常的访问（因为有默认值[]）
+                parts.push(`\tdata['${jsonKey}'] = entity.${fieldName}.map((v) => v.toJson()).toList();`);
             } else if (prop.isNestedObject) {
-                parts.push(`\tdata['${jsonKey}'] = entity.${fieldName}?.toJson();`);
+                // 对于late字段，使用正常的访问（因为是late初始化）
+                parts.push(`\tdata['${jsonKey}'] = entity.${fieldName}.toJson();`);
             } else {
                 parts.push(`\tdata['${jsonKey}'] = entity.${fieldName};`);
             }
@@ -787,7 +800,9 @@ ${properties.map(prop => `      '${prop.name}': entity.${prop.name}`).join(',\n'
                 paramType = this.getNestedClassName(prop.dartType);
             }
 
-            return `\t\t${paramType}? ${fieldName}`;
+            // 对于dynamic类型，不添加?标记（原版风格）
+            const typeNullString = prop.dartType === 'dynamic' ? '' : '?';
+            return `\t\t${paramType}${typeNullString} ${fieldName}`;
         }).join(',\n');
 
         parts.push(`\t${className} copyWith({`);
