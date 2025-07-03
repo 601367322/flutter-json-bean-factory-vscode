@@ -1,0 +1,61 @@
+<!-- Plugin Configuration File. Read more: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
+<idea-plugin>
+    <id>com.ruiyu.ruiyu</id>
+    <name>FlutterJsonBeanFactory</name>
+    <vendor email="157418979@qq.com" url="https://github.com/zhangruiyu/FlutterJsonBeanFactory">感谢大家,欢迎大家进入交流q群(963752388),接flutter外包,万分感谢</vendor>
+
+    <description><![CDATA[
+     <br>Json to dart beans are provided, and dart files ending in entity are provided to generate dart bean factory for use.</br>
+     <br>right click on package -> `New`->`Dart bean clas file from JSON`　And Then you will know how to use</br>
+     <br>If you change the fields in the class, just press the shortcut alt + j to regenerate the tojson and fromjson methods. The generated method regenerates all helper classes and JsonConvert classes (the same as the shortcut alt + j) each time an entity file is created in the generated/json directory.</br>
+     <br>If you need generic conversions in your network requests, use the jsonconvert.fromjsonast method directly.</br>
+     <br>If no helper files are generated, you can delete the .idea directory and restart your idea</br>
+    ]]></description>
+    <!-- please see http://www.jetbrains.org/intellij/sdk/docs/basics/getting_started/plugin_compatibility.html
+         on how to target different products -->
+    <depends>com.intellij.modules.json</depends>
+    <depends>com.intellij.modules.lang</depends>
+    <depends>com.intellij.modules.all</depends>
+    <!--    <depends>com.intellij.modules.java</depends>-->
+    <depends>com.intellij.modules.platform</depends>
+    <depends>Dart</depends>
+    <depends>org.jetbrains.kotlin</depends>
+    <depends>io.flutter</depends>
+    <actions>
+        <!-- Add your actions here -->
+        <action id="FlutterBeanFactory.ID" class="com.github.zhangruiyu.flutterjsonbeanfactory.action.dart_to_helper.FlutterBeanFactoryAction"
+                text="FlutterBeanFactory"
+                description="Dart files ending in entity generate dart bean factory for use">
+            <add-to-group group-id="BuildMenu" anchor="first"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="alt j"/>
+        </action>
+
+        <action id="FlutterBeanFactory.GenerateDartBeanFileAction"
+                class="com.github.zhangruiyu.flutterjsonbeanfactory.action.jsontodart.JsonToDartBeanAction"
+                text="Dart Bean Class File from JSON"
+                icon="/icons/action.png"
+                description="Generate dart bean class File from JSON">
+            <add-to-group group-id="NewGroup" anchor="before" relative-to-action="NewFile"/>
+        </action>
+        <group id="FlutterBeanFactory.GenerateDartToJsonAndFromJsonFileAction" icon="/icons/action.png" popup="true" text="FlutterBeanFactory">
+            <add-to-group anchor="after" relative-to-action="Generate.Constructor.Dart" group-id="GenerateGroup"/>
+            <action id="Dart.Generate.ToFromJson.Action" icon="/icons/action.png"
+                    class="com.github.zhangruiyu.flutterjsonbeanfactory.action.class_body_generate.DartGenerateToFromJsonAction"
+                    text="ToJson And FromJson">
+            </action>
+        </group>
+    </actions>
+    <extensions defaultExtensionNs="com.intellij">
+        <applicationService serviceImplementation="com.github.zhangruiyu.flutterjsonbeanfactory.setting.Settings"/>
+        <projectConfigurable groupId="tools" displayName="FlutterJsonBeanFactory"
+                             id="preferences.SingleFileExecutionConfigurable"
+                             instance="com.github.zhangruiyu.flutterjsonbeanfactory.setting.SettingComponent"/>
+    </extensions>
+    <extensions defaultExtensionNs="com.intellij">
+        <notificationGroup id="flutterJsonNotification" displayType="BALLOON"/>
+    </extensions>
+<!--    <applicationListeners>-->
+<!--        <listener class="com.github.zhangruiyu.flutterjsonbeanfactory.listeners.MyProjectManagerListener"-->
+<!--                  topic="com.intellij.openapi.project.ProjectManagerListener"/>-->
+<!--    </applicationListeners>-->
+</idea-plugin>

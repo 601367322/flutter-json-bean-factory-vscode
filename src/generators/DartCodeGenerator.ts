@@ -45,7 +45,8 @@ export class DartCodeGenerator {
      */
     generateDartClass(jsonClass: JsonClass): string {
         const className = this.getClassName(jsonClass.name);
-        const imports = this.generateEntityImports(className);
+        const allClasses = this.collectAllClasses(jsonClass);
+        const imports = this.generateEntityImports(className, jsonClass, allClasses);
         const classDeclaration = this.generateEntityClassDeclaration(className, jsonClass.properties);
 
         return [
@@ -60,7 +61,8 @@ export class DartCodeGenerator {
      */
     generateHelperFile(jsonClass: JsonClass): string {
         const className = this.getClassName(jsonClass.name);
-        const imports = this.generateHelperImports(className);
+        const allClasses = this.collectAllClasses(jsonClass);
+        const imports = this.generateHelperImports(className, allClasses);
         const fromJsonFunction = this.generateFromJsonFunction(className, jsonClass.properties);
         const toJsonFunction = this.generateToJsonFunction(className, jsonClass.properties);
         const copyWithExtension = this.generateCopyWithExtension(className, jsonClass.properties);
@@ -283,18 +285,90 @@ class JSONField {
 }`;
     }
 
-    private generateEntityImports(className: string): string {
+    private generateEntityImports(className: string, jsonClass: JsonClass, allClasses: JsonClass[]): string {
         const snakeClassName = this.toSnakeCase(className);
-        return `import 'package:${this.packageName}/generated/json/base/json_field.dart';
-import 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';
-import 'dart:convert';
-export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
+        const imports = [
+            `import 'package:${this.packageName}/generated/json/base/json_field.dart';`,
+            `import 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`,
+            `import 'dart:convert';`
+        ];
+
+        // 收集当前类中引用的其他Entity类
+        const referencedClasses = new Set<string>();
+
+        const collectReferencedClasses = (properties: JsonProperty[]) => {
+            for (const prop of properties) {
+                if (prop.isNestedObject && prop.nestedClass) {
+                    const referencedClassName = this.getClassName(prop.nestedClass.name);
+                    if (referencedClassName !== className) {
+                        referencedClasses.add(referencedClassName);
+                    }
+                }
+                if (prop.isArray && prop.isNestedObject && prop.arrayElementType) {
+                    // 从arrayElementType中提取类名
+                    const elementClassName = prop.arrayElementType + this.config.classNameSuffix;
+                    if (elementClassName !== className) {
+                        referencedClasses.add(elementClassName);
+                    }
+                }
+            }
+        };
+
+        collectReferencedClasses(jsonClass.properties);
+
+        // 为引用的类添加导入
+        for (const referencedClass of referencedClasses) {
+            const referencedSnakeClassName = this.toSnakeCase(referencedClass);
+            imports.push(`import 'package:${this.packageName}/models/${referencedSnakeClassName}.dart';`);
+        }
+
+        imports.push(`export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`);
+
+        return imports.join('\n');
     }
 
-    private generateHelperImports(className: string): string {
-        const snakeClassName = this.toSnakeCase(className);
-        return `import 'package:${this.packageName}/generated/json/base/json_convert_content.dart';
-import 'package:${this.packageName}/models/${snakeClassName}.dart';`;
+    private collectAllClasses(jsonClass: JsonClass): JsonClass[] {
+        const allClasses: JsonClass[] = [jsonClass];
+        const visited = new Set<string>();
+
+        const collectNested = (cls: JsonClass) => {
+            if (visited.has(cls.name)) return;
+            visited.add(cls.name);
+
+            for (const prop of cls.properties) {
+                if (prop.nestedClass) {
+                    allClasses.push(prop.nestedClass);
+                    collectNested(prop.nestedClass);
+                }
+            }
+
+            for (const nestedClass of cls.nestedClasses) {
+                allClasses.push(nestedClass);
+                collectNested(nestedClass);
+            }
+        };
+
+        collectNested(jsonClass);
+        return allClasses;
+    }
+
+    private generateHelperImports(className: string, allClasses: JsonClass[]): string {
+        const imports = [`import 'package:${this.packageName}/generated/json/base/json_convert_content.dart';`];
+        const importedClasses = new Set<string>();
+
+        // 为每个类添加导入，避免重复
+        for (const cls of allClasses) {
+            const entityClassName = this.getClassName(cls.name);
+            const snakeClassName = this.toSnakeCase(entityClassName);
+            const importPath = `import 'package:${this.packageName}/models/${snakeClassName}.dart';`;
+
+            if (!importedClasses.has(importPath)) {
+                imports.push(importPath);
+                importedClasses.add(importPath);
+            }
+        }
+
+        return imports.join('\n');
     }
 
     private generateEntityClassDeclaration(className: string, properties: JsonProperty[]): string {
@@ -307,7 +381,28 @@ import 'package:${this.packageName}/models/${snakeClassName}.dart';`;
         // Add properties with default values (original style)
         for (const prop of properties) {
             const defaultValue = this.getDefaultValue(prop);
-            parts.push(`\t${prop.dartType} ${prop.name} = ${defaultValue};`);
+
+            // 检查是否需要@JSONField注解（原始JSON key与驼峰字段名不同）
+            const camelCaseName = this.toCamelCase(prop.originalJsonKey);
+            const needsJsonField = camelCaseName !== prop.originalJsonKey;
+
+            // 添加@JSONField注解（如果需要）
+            if (needsJsonField) {
+                parts.push(`\t@JSONField(name: "${prop.originalJsonKey}")`);
+            }
+
+            // 使用驼峰命名的字段名
+            const fieldName = needsJsonField ? camelCaseName : prop.originalJsonKey;
+
+            // 修正字段类型，为嵌套对象和数组元素添加Entity后缀
+            let fieldType = prop.dartType;
+            if (prop.isArray && prop.arrayElementType && prop.isNestedObject) {
+                fieldType = `List<${prop.arrayElementType}${this.config.classNameSuffix}>`;
+            } else if (prop.isNestedObject) {
+                fieldType = prop.dartType + this.config.classNameSuffix;
+            }
+
+            parts.push(`\t${fieldType} ${fieldName} = ${defaultValue};`);
         }
 
         parts.push('');
@@ -554,7 +649,9 @@ ${properties.map(prop => `      '${prop.name}': entity.${prop.name}`).join(',\n'
                 return 'false';
             default:
                 if (prop.isNestedObject) {
-                    return `${prop.dartType}()`;
+                    // 为嵌套对象添加Entity后缀
+                    const entityClassName = prop.dartType + this.config.classNameSuffix;
+                    return `${entityClassName}()`;
                 }
                 return 'null';
         }
@@ -565,30 +662,37 @@ ${properties.map(prop => `      '${prop.name}': entity.${prop.name}`).join(',\n'
         const parts = [];
 
         parts.push(`${className} ${functionName}(Map<String, dynamic> json) {`);
-        parts.push(`\tfinal ${className} ${this.toCamelCase(className)} = ${className}();`);
+        const instanceName = className.charAt(0).toLowerCase() + className.slice(1);
+        parts.push(`\tfinal ${className} ${instanceName} = ${className}();`);
 
         for (const prop of properties) {
-            const jsonKey = prop.name;
-            const varName = this.toCamelCase(prop.name);
+            const jsonKey = prop.originalJsonKey; // 原始JSON key
+            const camelCaseName = this.toCamelCase(prop.originalJsonKey);
+            const fieldName = camelCaseName !== prop.originalJsonKey ? camelCaseName : prop.originalJsonKey; // 使用驼峰命名的字段名
+            const varName = this.toCamelCase(prop.originalJsonKey);
 
             if (prop.isArray) {
                 if (prop.isNestedObject && prop.arrayElementType) {
-                    parts.push(`\tfinal List<${prop.arrayElementType}>? ${varName} = (json['${jsonKey}'] as List<dynamic>?)?.map((e) => ${prop.arrayElementType}.fromJson(e as Map<String, dynamic>)).toList();`);
+                    // 对于嵌套对象数组，使用带Entity后缀的类名
+                    const entityElementType = prop.arrayElementType + this.config.classNameSuffix;
+                    parts.push(`\tfinal List<${entityElementType}>? ${varName} = (json['${jsonKey}'] as List<dynamic>?)?.map((e) => jsonConvert.convert<${entityElementType}>(e) as ${entityElementType}).toList();`);
                 } else {
+                    // 对于基础类型数组
                     parts.push(`\tfinal List<${prop.arrayElementType}>? ${varName} = jsonConvert.convert<List<${prop.arrayElementType}>>(json['${jsonKey}']);`);
                 }
             } else if (prop.isNestedObject && prop.nestedClass) {
-                parts.push(`\tfinal ${prop.dartType}? ${varName} = jsonConvert.convert<${prop.dartType}>(json['${jsonKey}']);`);
+                const entityType = prop.dartType + this.config.classNameSuffix;
+                parts.push(`\tfinal ${entityType}? ${varName} = jsonConvert.convert<${entityType}>(json['${jsonKey}']);`);
             } else {
                 parts.push(`\tfinal ${prop.dartType}? ${varName} = jsonConvert.convert<${prop.dartType}>(json['${jsonKey}']);`);
             }
 
             parts.push(`\tif (${varName} != null) {`);
-            parts.push(`\t\t${this.toCamelCase(className)}.${prop.name} = ${varName};`);
+            parts.push(`\t\t${instanceName}.${fieldName} = ${varName};`);
             parts.push(`\t}`);
         }
 
-        parts.push(`\treturn ${this.toCamelCase(className)};`);
+        parts.push(`\treturn ${instanceName};`);
         parts.push('}');
 
         return parts.join('\n');
@@ -602,12 +706,16 @@ ${properties.map(prop => `      '${prop.name}': entity.${prop.name}`).join(',\n'
         parts.push('\tfinal Map<String, dynamic> data = <String, dynamic>{};');
 
         for (const prop of properties) {
+            const jsonKey = prop.originalJsonKey; // 原始JSON key
+            const camelCaseName = this.toCamelCase(prop.originalJsonKey);
+            const fieldName = camelCaseName !== prop.originalJsonKey ? camelCaseName : prop.originalJsonKey; // 使用驼峰命名的字段名
+
             if (prop.isArray && prop.isNestedObject) {
-                parts.push(`\tdata['${prop.name}'] = entity.${prop.name}?.map((e) => e.toJson()).toList();`);
+                parts.push(`\tdata['${jsonKey}'] = entity.${fieldName}?.map((e) => e.toJson()).toList();`);
             } else if (prop.isNestedObject) {
-                parts.push(`\tdata['${prop.name}'] = entity.${prop.name}?.toJson();`);
+                parts.push(`\tdata['${jsonKey}'] = entity.${fieldName}?.toJson();`);
             } else {
-                parts.push(`\tdata['${prop.name}'] = entity.${prop.name};`);
+                parts.push(`\tdata['${jsonKey}'] = entity.${fieldName};`);
             }
         }
 
@@ -624,7 +732,18 @@ ${properties.map(prop => `      '${prop.name}': entity.${prop.name}`).join(',\n'
 
         // Generate copyWith method - all parameters are nullable in copyWith
         const params = properties.map(prop => {
-            return `\t\t${prop.dartType}? ${prop.name}`;
+            const camelCaseName = this.toCamelCase(prop.originalJsonKey);
+            const fieldName = camelCaseName !== prop.originalJsonKey ? camelCaseName : prop.originalJsonKey;
+
+            // 确保嵌套类型使用正确的Entity类名
+            let paramType = prop.dartType;
+            if (prop.isArray && prop.arrayElementType && prop.isNestedObject) {
+                paramType = `List<${prop.arrayElementType}${this.config.classNameSuffix}>`;
+            } else if (prop.isNestedObject) {
+                paramType = prop.dartType + this.config.classNameSuffix;
+            }
+
+            return `\t\t${paramType}? ${fieldName}`;
         }).join(',\n');
 
         parts.push(`\t${className} copyWith({`);
@@ -633,7 +752,9 @@ ${properties.map(prop => `      '${prop.name}': entity.${prop.name}`).join(',\n'
         parts.push(`\t\treturn ${className}()`);
 
         for (const prop of properties) {
-            parts.push(`\t\t\t..${prop.name} = ${prop.name} ?? this.${prop.name}`);
+            const camelCaseName = this.toCamelCase(prop.originalJsonKey);
+            const fieldName = camelCaseName !== prop.originalJsonKey ? camelCaseName : prop.originalJsonKey;
+            parts.push(`\t\t\t..${fieldName} = ${fieldName} ?? this.${fieldName}`);
         }
 
         parts.push('\t\t\t;');
@@ -644,7 +765,8 @@ ${properties.map(prop => `      '${prop.name}': entity.${prop.name}`).join(',\n'
     }
 
     private toCamelCase(str: string): string {
-        return str.charAt(0).toLowerCase() + str.slice(1);
+        // 将snake_case转换为camelCase
+        return str.replace(/_([a-z])/g, (_, letter) => letter.toUpperCase());
     }
 
     private generateJsonConvertImports(allClasses: JsonClass[]): string {

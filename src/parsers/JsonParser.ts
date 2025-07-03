@@ -1,5 +1,6 @@
 export interface JsonProperty {
     name: string;
+    originalJsonKey: string;  // 保存原始的JSON key
     type: string;
     dartType: string;
     isNullable: boolean;
@@ -104,6 +105,7 @@ export class JsonParser {
 
         return {
             name: propertyName,
+            originalJsonKey: key,  // 保存原始的JSON key
             type,
             dartType,
             isNullable,
