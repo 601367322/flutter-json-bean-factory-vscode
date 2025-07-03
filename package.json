@@ -104,6 +104,36 @@
           "type": "string",
           "default": "",
           "description": "Suffix for generated class names"
+        },
+        "flutter-json-bean-factory.forceNonNullable": {
+          "type": "boolean",
+          "default": false,
+          "description": "Force all fields to be non-nullable (removes ? from all types)"
+        },
+        "flutter-json-bean-factory.addNullChecks": {
+          "type": "boolean",
+          "default": true,
+          "description": "Add null checks in fromJson method for non-nullable fields"
+        },
+        "flutter-json-bean-factory.useAsserts": {
+          "type": "boolean",
+          "default": false,
+          "description": "Use assert statements for validation in fromJson method"
+        },
+        "flutter-json-bean-factory.generateToString": {
+          "type": "boolean",
+          "default": true,
+          "description": "Generate toString() method for classes"
+        },
+        "flutter-json-bean-factory.generateEquality": {
+          "type": "boolean",
+          "default": false,
+          "description": "Generate == operator and hashCode methods"
+        },
+        "flutter-json-bean-factory.scanPath": {
+          "type": "string",
+          "default": "lib",
+          "description": "Path to scan for existing entity files (supports multiple paths separated by comma)"
         }
       }
     }
@@ -114,7 +144,9 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
-    "test": "node ./out/test/runTest.js",
+    "test": "npm run test:unit",
+    "test:unit": "mocha out/test/suite/*.test.js",
+    "test:integration": "node ./out/test/runTest.js",
     "package": "vsce package",
     "publish": "vsce publish"
   },

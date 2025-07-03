@@ -33,12 +33,25 @@ A VSCode extension that generates Dart beans from JSON with fromJson/toJson meth
 
 You can customize the extension behavior in VSCode settings:
 
+### Basic Settings
 - `flutter-json-bean-factory.generatedPath`: Path for generated JSON helper files
 - `flutter-json-bean-factory.entityPath`: Path for entity/model files
 - `flutter-json-bean-factory.nullSafety`: Enable null-safety (default: true)
 - `flutter-json-bean-factory.useJsonAnnotation`: Use json_annotation package
 - `flutter-json-bean-factory.classNamePrefix`: Prefix for class names
 - `flutter-json-bean-factory.classNameSuffix`: Suffix for class names
+
+### Advanced Null Handling
+- `flutter-json-bean-factory.forceNonNullable`: Force all fields to be non-nullable (removes ? from all types)
+- `flutter-json-bean-factory.addNullChecks`: Add null checks in fromJson method for non-nullable fields
+- `flutter-json-bean-factory.useAsserts`: Use assert statements for validation in fromJson method
+
+### Code Generation Options
+- `flutter-json-bean-factory.generateToString`: Generate toString() method for classes
+- `flutter-json-bean-factory.generateEquality`: Generate == operator and hashCode methods
+
+### Scanning Configuration
+- `flutter-json-bean-factory.scanPath`: Path(s) to scan for existing entity files (supports multiple paths separated by comma)
 
 ## Requirements
 
@@ -51,6 +64,30 @@ You can customize the extension behavior in VSCode settings:
 2. Go to Extensions (Ctrl+Shift+X)
 3. Search for "Flutter JSON Bean Factory"
 4. Click Install
+
+## Development
+
+### Quick Setup
+
+```bash
+# Clone and setup
+git clone <repository-url>
+cd FlutterJsonBeanFactoryVSCode
+./scripts/dev.sh
+```
+
+### Testing
+
+- **Unit Tests**: `npm run test:unit` (fast, no VSCode download required)
+- **Integration Tests**: `npm run test:integration` (requires VSCode download)
+- **All Tests**: `npm test` (runs unit tests by default)
+
+### Development Workflow
+
+1. Run `npm run watch` for automatic compilation
+2. Press `F5` in VSCode to launch Extension Development Host
+3. Test your changes in the new window
+4. Press `Ctrl+R` to reload the extension after changes
 
 ## Contributing
 

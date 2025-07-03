@@ -1,28 +1,28 @@
 import * as assert from 'assert';
 import { JsonParser } from '../../parsers/JsonParser';
 
-suite('JsonParser Test Suite', () => {
+describe('JsonParser Test Suite', () => {
     let parser: JsonParser;
 
-    setup(() => {
+    beforeEach(() => {
         parser = new JsonParser();
     });
 
-    test('Should validate valid JSON', () => {
+    it('Should validate valid JSON', () => {
         const validJson = '{"name": "John", "age": 30}';
         const result = parser.validateJson(validJson);
         assert.strictEqual(result.isValid, true);
         assert.strictEqual(result.error, undefined);
     });
 
-    test('Should invalidate invalid JSON', () => {
+    it('Should invalidate invalid JSON', () => {
         const invalidJson = '{"name": "John", "age":}';
         const result = parser.validateJson(invalidJson);
         assert.strictEqual(result.isValid, false);
         assert.notStrictEqual(result.error, undefined);
     });
 
-    test('Should parse simple JSON object', () => {
+    it('Should parse simple JSON object', () => {
         const json = '{"name": "John", "age": 30, "isActive": true}';
         const result = parser.parseJson(json, 'User');
         
@@ -40,20 +40,20 @@ suite('JsonParser Test Suite', () => {
         assert.strictEqual(isActiveProperty?.dartType, 'bool');
     });
 
-    test('Should handle nested objects', () => {
+    it('Should handle nested objects', () => {
         const json = '{"user": {"name": "John", "age": 30}, "count": 5}';
         const result = parser.parseJson(json, 'Response');
-        
+
         assert.strictEqual(result.name, 'Response');
         assert.strictEqual(result.properties.length, 2);
-        
+
         const userProperty = result.properties.find(p => p.name === 'user');
         assert.strictEqual(userProperty?.isNestedObject, true);
         assert.strictEqual(userProperty?.nestedClass?.name, 'ResponseUser');
         assert.strictEqual(userProperty?.nestedClass?.properties.length, 2);
     });
 
-    test('Should handle arrays', () => {
+    it('Should handle arrays', () => {
         const json = '{"names": ["John", "Jane"], "numbers": [1, 2, 3]}';
         const result = parser.parseJson(json, 'Data');
         
@@ -68,10 +68,10 @@ suite('JsonParser Test Suite', () => {
         assert.strictEqual(numbersProperty?.arrayElementType, 'int');
     });
 
-    test('Should handle array of objects', () => {
+    it('Should handle array of objects', () => {
         const json = '{"users": [{"name": "John", "age": 30}]}';
         const result = parser.parseJson(json, 'Response');
-        
+
         const usersProperty = result.properties.find(p => p.name === 'users');
         assert.strictEqual(usersProperty?.isArray, true);
         assert.strictEqual(usersProperty?.isNestedObject, true);
@@ -79,34 +79,34 @@ suite('JsonParser Test Suite', () => {
         assert.strictEqual(usersProperty?.dartType, 'List<ResponseUsersItem>');
     });
 
-    test('Should handle null values', () => {
+    it('Should handle null values', () => {
         const json = '{"name": "John", "age": null}';
         const result = parser.parseJson(json, 'User');
-        
+
         const ageProperty = result.properties.find(p => p.name === 'age');
         assert.strictEqual(ageProperty?.isNullable, true);
         assert.strictEqual(ageProperty?.dartType, 'dynamic');
     });
 
-    test('Should convert property names to camelCase', () => {
+    it('Should convert property names to camelCase', () => {
         const json = '{"first_name": "John", "last-name": "Doe", "user_id": 123}';
         const result = parser.parseJson(json, 'User');
-        
+
         const properties = result.properties.map(p => p.name);
         assert.deepStrictEqual(properties.sort(), ['firstName', 'lastName', 'userId']);
     });
 
-    test('Should convert class names to PascalCase', () => {
+    it('Should convert class names to PascalCase', () => {
         const json = '{"user_profile": {"first_name": "John"}}';
         const result = parser.parseJson(json, 'response_data');
-        
+
         assert.strictEqual(result.name, 'ResponseData');
-        
+
         const userProfileProperty = result.properties.find(p => p.name === 'userProfile');
         assert.strictEqual(userProfileProperty?.nestedClass?.name, 'ResponseDataUserProfile');
     });
 
-    test('Should get all classes including nested ones', () => {
+    it('Should get all classes including nested ones', () => {
         const json = '{"user": {"profile": {"name": "John"}}, "count": 5}';
         const result = parser.parseJson(json, 'Response');
         const allClasses = parser.getAllClasses(result);

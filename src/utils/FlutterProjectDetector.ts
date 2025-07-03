@@ -58,6 +58,36 @@ export class FlutterProjectDetector {
     }
 
     /**
+     * Get package name from pubspec.yaml
+     */
+    getPackageName(): string | undefined {
+        const rootPath = this.getFlutterProjectRoot();
+        if (!rootPath) {
+            return undefined;
+        }
+
+        const pubspecPath = path.join(rootPath, 'pubspec.yaml');
+        try {
+            if (!fs.existsSync(pubspecPath)) {
+                return undefined;
+            }
+
+            const pubspecContent = fs.readFileSync(pubspecPath, 'utf8');
+
+            // Extract package name from pubspec.yaml
+            const nameMatch = pubspecContent.match(/^name:\s*(.+)$/m);
+            if (nameMatch && nameMatch[1]) {
+                return nameMatch[1].trim();
+            }
+
+            return undefined;
+        } catch (error) {
+            console.error('Error reading pubspec.yaml:', error);
+            return undefined;
+        }
+    }
+
+    /**
      * Check if a directory exists, create if not
      */
     ensureDirectoryExists(dirPath: string): void {

@@ -136,7 +136,7 @@ export class JsonBeanGenerator {
     private async generateAndSaveFiles(classes: JsonClass[], targetUri?: vscode.Uri): Promise<void> {
         const config = this.getConfig();
         const projectRoot = this.projectDetector.getFlutterProjectRoot();
-        
+
         if (!projectRoot) {
             throw new Error('Flutter project root not found');
         }
@@ -156,10 +156,16 @@ export class JsonBeanGenerator {
         this.projectDetector.ensureDirectoryExists(generatedDir);
         this.projectDetector.ensureDirectoryExists(path.join(generatedDir, 'base'));
 
-        // Generate base JSON convert file
-        await this.generateBaseJsonConvert(generatedDir);
+        // 扫描已存在的entity文件，获取所有已生成的models
+        const existingModels = await this.scanExistingModels();
 
-        // Generate classes
+        // 合并新生成的classes和已存在的models
+        const allClasses = this.mergeWithExistingModels(classes, existingModels);
+
+        // Generate base JSON convert file with ALL classes (new + existing)
+        await this.generateBaseJsonConvert(generatedDir, allClasses);
+
+        // Generate classes (only new ones)
         for (const cls of classes) {
             await this.generateClassFiles(cls, targetDir, generatedDir);
         }
@@ -179,32 +185,187 @@ export class JsonBeanGenerator {
         fs.writeFileSync(helperPath, helperContent);
     }
 
-    private async generateBaseJsonConvert(generatedDir: string): Promise<void> {
+    private async generateBaseJsonConvert(generatedDir: string, allClasses: JsonClass[]): Promise<void> {
         const baseDir = path.join(generatedDir, 'base');
+
+        // Generate json_convert_content.dart with all classes
         const basePath = path.join(baseDir, 'json_convert_content.dart');
-        
-        if (!fs.existsSync(basePath)) {
-            const baseContent = this.codeGenerator.generateBaseJsonConvert();
-            fs.writeFileSync(basePath, baseContent);
+        const baseContent = this.codeGenerator.generateBaseJsonConvert(allClasses);
+        fs.writeFileSync(basePath, baseContent);
+
+        // Generate json_field.dart
+        const fieldPath = path.join(baseDir, 'json_field.dart');
+        if (!fs.existsSync(fieldPath)) {
+            const fieldContent = this.codeGenerator.generateJsonField();
+            fs.writeFileSync(fieldPath, fieldContent);
         }
     }
 
     private updateConfig(): void {
         const config = this.getConfig();
-        this.codeGenerator = new DartCodeGenerator(config);
+        const packageName = this.projectDetector.getPackageName() || 'your_app';
+        this.codeGenerator = new DartCodeGenerator(config, packageName);
     }
 
     private getConfig(): GeneratorConfig {
         const configuration = vscode.workspace.getConfiguration('flutter-json-bean-factory');
-        
+
         return {
             nullSafety: configuration.get('nullSafety', true),
             useJsonAnnotation: configuration.get('useJsonAnnotation', true),
             classNamePrefix: configuration.get('classNamePrefix', ''),
             classNameSuffix: configuration.get('classNameSuffix', ''),
             generatedPath: configuration.get('generatedPath', 'lib/generated/json'),
-            entityPath: configuration.get('entityPath', 'lib/models')
+            entityPath: configuration.get('entityPath', 'lib/models'),
+            forceNonNullable: configuration.get('forceNonNullable', false),
+            addNullChecks: configuration.get('addNullChecks', true),
+            useAsserts: configuration.get('useAsserts', false),
+            generateToString: configuration.get('generateToString', true),
+            generateEquality: configuration.get('generateEquality', false),
+            scanPath: configuration.get('scanPath', 'lib')
         };
+    }
+
+    /**
+     * 扫描已存在的entity文件，提取类名和路径信息
+     * 支持多路径扫描，路径用逗号分隔
+     */
+    private async scanExistingModels(): Promise<Array<{className: string, filePath: string}>> {
+        const existingModels: Array<{className: string, filePath: string}> = [];
+        const config = this.getConfig();
+        const projectRoot = this.projectDetector.getFlutterProjectRoot();
+
+        if (!projectRoot) {
+            return existingModels;
+        }
+
+        try {
+            // 解析扫描路径，支持多路径（逗号分隔）
+            const scanPaths = config.scanPath.split(',').map(p => p.trim());
+
+            for (const scanPath of scanPaths) {
+                if (!scanPath) continue;
+
+                const fullScanPath = path.join(projectRoot, scanPath);
+                await this.scanDirectoryForModels(fullScanPath, existingModels, projectRoot);
+            }
+
+            // 去重（基于类名）
+            const uniqueModels = existingModels.filter((model, index, self) =>
+                index === self.findIndex(m => m.className === model.className)
+            );
+
+            return uniqueModels;
+
+        } catch (error) {
+            console.error('Error scanning existing models:', error);
+            return existingModels;
+        }
+    }
+
+    /**
+     * 递归扫描目录中的entity文件
+     */
+    private async scanDirectoryForModels(dirPath: string, existingModels: Array<{className: string, filePath: string}>, projectRoot: string): Promise<void> {
+        try {
+            if (!fs.existsSync(dirPath)) {
+                return;
+            }
+
+            const stat = fs.statSync(dirPath);
+            if (!stat.isDirectory()) {
+                return;
+            }
+
+            const files = fs.readdirSync(dirPath);
+
+            for (const file of files) {
+                const filePath = path.join(dirPath, file);
+                const fileStat = fs.statSync(filePath);
+
+                if (fileStat.isDirectory()) {
+                    // 递归扫描子目录
+                    await this.scanDirectoryForModels(filePath, existingModels, projectRoot);
+                } else if (file.endsWith('.dart')) {
+                    // 检查Dart文件
+                    await this.scanDartFileForModels(filePath, existingModels, projectRoot);
+                }
+            }
+        } catch (error) {
+            console.error(`Error scanning directory ${dirPath}:`, error);
+        }
+    }
+
+    /**
+     * 扫描单个Dart文件中的entity类
+     */
+    private async scanDartFileForModels(filePath: string, existingModels: Array<{className: string, filePath: string}>, projectRoot: string): Promise<void> {
+        try {
+            const content = fs.readFileSync(filePath, 'utf8');
+
+            // 提取类名，匹配 @JsonSerializable() 后面的 class 声明
+            const classMatches = content.matchAll(/@JsonSerializable\(\)\s*class\s+(\w+)/g);
+
+            for (const match of classMatches) {
+                if (match[1]) {
+                    // 计算相对于项目根目录的路径
+                    const relativePath = path.relative(projectRoot, filePath);
+                    // 移除.dart扩展名，并转换路径分隔符
+                    let importPath = relativePath.replace(/\.dart$/, '').replace(/\\/g, '/');
+
+                    // 移除lib/前缀（package导入不需要lib前缀）
+                    if (importPath.startsWith('lib/')) {
+                        importPath = importPath.substring(4);
+                    }
+
+                    existingModels.push({
+                        className: match[1],
+                        filePath: importPath
+                    });
+                }
+            }
+        } catch (error) {
+            console.error(`Error scanning file ${filePath}:`, error);
+        }
+    }
+
+    /**
+     * 合并新生成的classes和已存在的models
+     */
+    private mergeWithExistingModels(newClasses: JsonClass[], existingModels: Array<{className: string, filePath: string}>): JsonClass[] {
+        const allClasses = [...newClasses];
+        const config = this.getConfig();
+
+        // 为已存在的models创建简单的JsonClass对象（用于生成导入和映射）
+        for (const model of existingModels) {
+            // 检查是否已经在新classes中存在
+            const exists = newClasses.some(cls => {
+                const generatedClassName = config.classNamePrefix + cls.name + config.classNameSuffix;
+                return generatedClassName === model.className;
+            });
+
+            if (!exists) {
+                // 创建一个简单的JsonClass对象，包含类名和文件路径信息
+                let baseName = model.className;
+                // 移除前缀和后缀得到原始名称
+                if (config.classNamePrefix && baseName.startsWith(config.classNamePrefix)) {
+                    baseName = baseName.substring(config.classNamePrefix.length);
+                }
+                if (config.classNameSuffix && baseName.endsWith(config.classNameSuffix)) {
+                    baseName = baseName.substring(0, baseName.length - config.classNameSuffix.length);
+                }
+
+                const existingClass: JsonClass & {filePath?: string} = {
+                    name: baseName,
+                    properties: [],
+                    nestedClasses: [],
+                    filePath: model.filePath  // 保存实际文件路径
+                };
+                allClasses.push(existingClass);
+            }
+        }
+
+        return allClasses;
     }
 
     private toSnakeCase(str: string): string {
