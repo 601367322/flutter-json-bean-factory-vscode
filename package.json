@@ -1,0 +1,138 @@
+{
+  "name": "flutter-json-bean-factory",
+  "displayName": "Flutter JSON Bean Factory",
+  "description": "Generate Dart beans from JSON with fromJson/toJson methods for Flutter development",
+  "version": "1.0.0",
+  "publisher": "flutter-candies",
+  "icon": "images/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fluttercandies/FlutterJsonBeanFactoryVSCode.git"
+  },
+  "bugs": {
+    "url": "https://github.com/fluttercandies/FlutterJsonBeanFactoryVSCode/issues"
+  },
+  "homepage": "https://github.com/fluttercandies/FlutterJsonBeanFactoryVSCode#readme",
+  "engines": {
+    "vscode": "^1.74.0"
+  },
+  "categories": [
+    "Other",
+    "Snippets",
+    "Formatters"
+  ],
+  "keywords": [
+    "flutter",
+    "dart",
+    "json",
+    "bean",
+    "generator",
+    "fromjson",
+    "tojson"
+  ],
+  "activationEvents": [
+    "onLanguage:dart",
+    "workspaceContains:**/pubspec.yaml"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "flutter-json-bean-factory.generateFromJson",
+        "title": "Generate Dart Bean from JSON",
+        "category": "Flutter JSON Bean Factory"
+      },
+      {
+        "command": "flutter-json-bean-factory.regenerateBean",
+        "title": "Regenerate Dart Bean",
+        "category": "Flutter JSON Bean Factory"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "flutter-json-bean-factory.generateFromJson",
+        "key": "alt+j",
+        "mac": "alt+j",
+        "when": "editorTextFocus && resourceExtname == .dart"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "flutter-json-bean-factory.generateFromJson",
+          "when": "explorerResourceIsFolder",
+          "group": "navigation@1"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "flutter-json-bean-factory.regenerateBean",
+          "when": "resourceExtname == .dart",
+          "group": "1_modification@1"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Flutter JSON Bean Factory",
+      "properties": {
+        "flutter-json-bean-factory.generatedPath": {
+          "type": "string",
+          "default": "lib/generated/json",
+          "description": "Path where generated JSON helper files will be saved"
+        },
+        "flutter-json-bean-factory.entityPath": {
+          "type": "string",
+          "default": "lib/models",
+          "description": "Path where entity/model files will be saved"
+        },
+        "flutter-json-bean-factory.nullSafety": {
+          "type": "boolean",
+          "default": true,
+          "description": "Generate null-safe Dart code"
+        },
+        "flutter-json-bean-factory.useJsonAnnotation": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use json_annotation package for serialization"
+        },
+        "flutter-json-bean-factory.classNamePrefix": {
+          "type": "string",
+          "default": "",
+          "description": "Prefix for generated class names"
+        },
+        "flutter-json-bean-factory.classNameSuffix": {
+          "type": "string",
+          "default": "",
+          "description": "Suffix for generated class names"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js",
+    "package": "vsce package",
+    "publish": "vsce publish"
+  },
+  "devDependencies": {
+    "@types/glob": "^9.0.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "16.x",
+    "@types/vscode": "^1.74.0",
+    "@typescript-eslint/eslint-plugin": "^5.45.0",
+    "@typescript-eslint/parser": "^5.45.0",
+    "@vscode/test-electron": "^2.2.0",
+    "@vscode/vsce": "^2.15.0",
+    "eslint": "^8.28.0",
+    "glob": "^11.0.3",
+    "mocha": "^11.7.1",
+    "typescript": "^4.9.4"
+  },
+  "dependencies": {
+    "change-case": "^4.1.2"
+  }
+}
