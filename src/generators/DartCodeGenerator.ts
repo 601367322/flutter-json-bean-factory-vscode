@@ -43,16 +43,37 @@ export class DartCodeGenerator {
     /**
      * Generate Dart class code (entity file)
      */
-    generateDartClass(jsonClass: JsonClass): string {
+        generateDartClass(jsonClass: JsonClass): string {
         const className = this.getClassName(jsonClass.name);
         const allClasses = this.collectAllClasses(jsonClass);
-        const imports = this.generateEntityImports(className, jsonClass, allClasses);
-        const classDeclaration = this.generateEntityClassDeclaration(className, jsonClass.properties);
+        const imports = this.generateSingleFileImports(className);
+
+        // 生成主类和所有嵌套类在同一个文件中
+        const classDeclarations = [];
+
+        // 主类
+        const mainClassDeclaration = this.generateEntityClassDeclaration(className, jsonClass.properties);
+        classDeclarations.push(mainClassDeclaration);
+
+        // 嵌套类（去除Entity后缀，使用原始类名）
+        const processedClassNames = new Set<string>();
+        processedClassNames.add(className); // 添加主类名，避免重复
+
+        for (const nestedClass of allClasses.slice(1)) { // 跳过主类
+            const nestedClassName = this.getNestedClassName(nestedClass.name);
+
+            // 避免重复的类名
+            if (!processedClassNames.has(nestedClassName)) {
+                processedClassNames.add(nestedClassName);
+                const nestedClassDeclaration = this.generateEntityClassDeclaration(nestedClassName, nestedClass.properties);
+                classDeclarations.push(nestedClassDeclaration);
+            }
+        }
 
         return [
             imports,
             '',
-            classDeclaration
+            classDeclarations.join('\n\n')
         ].join('\n');
     }
 
@@ -63,18 +84,35 @@ export class DartCodeGenerator {
         const className = this.getClassName(jsonClass.name);
         const allClasses = this.collectAllClasses(jsonClass);
         const imports = this.generateHelperImports(className, allClasses);
-        const fromJsonFunction = this.generateFromJsonFunction(className, jsonClass.properties);
-        const toJsonFunction = this.generateToJsonFunction(className, jsonClass.properties);
-        const copyWithExtension = this.generateCopyWithExtension(className, jsonClass.properties);
+
+        // 生成所有类的函数（原版风格）
+        const allFunctions: string[] = [];
+        const processedClasses = new Set<string>();
+
+        for (const cls of allClasses) {
+            const clsName = cls === jsonClass ? className : this.getNestedClassName(cls.name);
+
+            // 避免重复生成相同类名的函数
+            if (!processedClasses.has(clsName)) {
+                processedClasses.add(clsName);
+
+                const fromJsonFunction = this.generateFromJsonFunction(clsName, cls.properties);
+                const toJsonFunction = this.generateToJsonFunction(clsName, cls.properties);
+                const copyWithExtension = this.generateCopyWithExtension(clsName, cls.properties);
+
+                allFunctions.push(fromJsonFunction);
+                allFunctions.push('');
+                allFunctions.push(toJsonFunction);
+                allFunctions.push('');
+                allFunctions.push(copyWithExtension);
+                allFunctions.push('');
+            }
+        }
 
         return [
             imports,
             '',
-            fromJsonFunction,
-            '',
-            toJsonFunction,
-            '',
-            copyWithExtension
+            allFunctions.join('\n')
         ].join('\n');
     }
 
@@ -285,46 +323,45 @@ class JSONField {
 }`;
     }
 
-    private generateEntityImports(className: string, jsonClass: JsonClass, allClasses: JsonClass[]): string {
+    private generateSingleFileImports(className: string): string {
         const snakeClassName = this.toSnakeCase(className);
-        const imports = [
-            `import 'package:${this.packageName}/generated/json/base/json_field.dart';`,
-            `import 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`,
-            `import 'dart:convert';`
-        ];
+        return `import 'package:${this.packageName}/generated/json/base/json_field.dart';
+import 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';
+import 'dart:convert';
+export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
+    }
 
-        // 收集当前类中引用的其他Entity类
-        const referencedClasses = new Set<string>();
+    private getNestedClassName(originalName: string): string {
+        // 1:1还原原版插件逻辑
+        // 原版逻辑：嵌套类名 = parentName + fieldTypeName
+        // 其中fieldTypeName是通过FieldUtils.toFieldTypeName(key)生成的
 
-        const collectReferencedClasses = (properties: JsonProperty[]) => {
-            for (const prop of properties) {
-                if (prop.isNestedObject && prop.nestedClass) {
-                    const referencedClassName = this.getClassName(prop.nestedClass.name);
-                    if (referencedClassName !== className) {
-                        referencedClasses.add(referencedClassName);
-                    }
-                }
-                if (prop.isArray && prop.isNestedObject && prop.arrayElementType) {
-                    // 从arrayElementType中提取类名
-                    const elementClassName = prop.arrayElementType + this.config.classNameSuffix;
-                    if (elementClassName !== className) {
-                        referencedClasses.add(elementClassName);
-                    }
-                }
+        // 移除主类名前缀，保留字段类型名
+        // 例如：GroupListGroupListItem -> GroupListItem -> Group (去掉Item后缀)
+        //      GroupListGroupListItemUserListItem -> UserListItem -> UserInfo
+
+        // 先移除重复的前缀
+        let className = originalName;
+
+        // 查找重复的模式并移除
+        const parts = className.split(/(?=[A-Z])/);
+        if (parts.length > 2) {
+            // 寻找重复的前缀模式
+            const firstHalf = parts.slice(0, Math.floor(parts.length / 2)).join('');
+            const secondHalf = parts.slice(Math.floor(parts.length / 2)).join('');
+
+            if (className.startsWith(firstHalf + firstHalf)) {
+                // 如果有重复前缀，移除一个
+                className = className.substring(firstHalf.length);
             }
-        };
-
-        collectReferencedClasses(jsonClass.properties);
-
-        // 为引用的类添加导入
-        for (const referencedClass of referencedClasses) {
-            const referencedSnakeClassName = this.toSnakeCase(referencedClass);
-            imports.push(`import 'package:${this.packageName}/models/${referencedSnakeClassName}.dart';`);
         }
 
-        imports.push(`export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`);
+        // 通用规则：如果以Item结尾，去掉Item；否则保持原样
+        if (className.endsWith('Item')) {
+            return className.substring(0, className.length - 4);
+        }
 
-        return imports.join('\n');
+        return className;
     }
 
     private collectAllClasses(jsonClass: JsonClass): JsonClass[] {
@@ -354,19 +391,12 @@ class JSONField {
 
     private generateHelperImports(className: string, allClasses: JsonClass[]): string {
         const imports = [`import 'package:${this.packageName}/generated/json/base/json_convert_content.dart';`];
-        const importedClasses = new Set<string>();
 
-        // 为每个类添加导入，避免重复
-        for (const cls of allClasses) {
-            const entityClassName = this.getClassName(cls.name);
-            const snakeClassName = this.toSnakeCase(entityClassName);
-            const importPath = `import 'package:${this.packageName}/models/${snakeClassName}.dart';`;
-
-            if (!importedClasses.has(importPath)) {
-                imports.push(importPath);
-                importedClasses.add(importPath);
-            }
-        }
+        // 只导入主文件，嵌套类都在主文件中（原版风格）
+        const mainClass = allClasses[0]; // 主类
+        const entityClassName = this.getClassName(mainClass.name);
+        const snakeClassName = this.toSnakeCase(entityClassName);
+        imports.push(`import 'package:${this.packageName}/models/${snakeClassName}.dart';`);
 
         return imports.join('\n');
     }
@@ -386,23 +416,36 @@ class JSONField {
             const camelCaseName = this.toCamelCase(prop.originalJsonKey);
             const needsJsonField = camelCaseName !== prop.originalJsonKey;
 
-            // 添加@JSONField注解（如果需要）
+            // 添加@JSONField注解（如果需要），使用单引号（原版风格）
             if (needsJsonField) {
-                parts.push(`\t@JSONField(name: "${prop.originalJsonKey}")`);
+                parts.push(`\t@JSONField(name: '${prop.originalJsonKey}')`);
             }
 
             // 使用驼峰命名的字段名
             const fieldName = needsJsonField ? camelCaseName : prop.originalJsonKey;
 
-            // 修正字段类型，为嵌套对象和数组元素添加Entity后缀
+            // 修正字段类型，在单文件模式下使用简洁的类名
             let fieldType = prop.dartType;
             if (prop.isArray && prop.arrayElementType && prop.isNestedObject) {
-                fieldType = `List<${prop.arrayElementType}${this.config.classNameSuffix}>`;
+                const simpleElementType = this.getNestedClassName(prop.arrayElementType);
+                fieldType = `List<${simpleElementType}>`;
             } else if (prop.isNestedObject) {
-                fieldType = prop.dartType + this.config.classNameSuffix;
+                const simpleType = this.getNestedClassName(prop.dartType);
+                fieldType = simpleType;
             }
 
-            parts.push(`\t${fieldType} ${fieldName} = ${defaultValue};`);
+            // 生成字段声明（原版风格）
+            if (prop.isNestedObject && !prop.isArray) {
+                // 对象字段使用late关键字（原版风格）
+                parts.push(`\t${fieldType.includes('late ') ? '' : 'late '}${fieldType} ${fieldName};`);
+            } else if (prop.dartType === 'dynamic') {
+                // dynamic字段不设置默认值（原版风格）
+                parts.push(`\t${fieldType} ${fieldName};`);
+            } else {
+                // 其他字段使用默认值
+                const correctedDefaultValue = prop.isArray ? '[]' : defaultValue;
+                parts.push(`\t${fieldType} ${fieldName} = ${correctedDefaultValue};`);
+            }
         }
 
         parts.push('');
@@ -673,16 +716,16 @@ ${properties.map(prop => `      '${prop.name}': entity.${prop.name}`).join(',\n'
 
             if (prop.isArray) {
                 if (prop.isNestedObject && prop.arrayElementType) {
-                    // 对于嵌套对象数组，使用带Entity后缀的类名
-                    const entityElementType = prop.arrayElementType + this.config.classNameSuffix;
-                    parts.push(`\tfinal List<${entityElementType}>? ${varName} = (json['${jsonKey}'] as List<dynamic>?)?.map((e) => jsonConvert.convert<${entityElementType}>(e) as ${entityElementType}).toList();`);
+                    // 对于嵌套对象数组，使用简洁的类名（单文件模式）
+                    const simpleElementType = this.getNestedClassName(prop.arrayElementType);
+                    parts.push(`\tfinal List<${simpleElementType}>? ${varName} = (json['${jsonKey}'] as List<dynamic>?)?.map((e) => jsonConvert.convert<${simpleElementType}>(e) as ${simpleElementType}).toList();`);
                 } else {
                     // 对于基础类型数组
                     parts.push(`\tfinal List<${prop.arrayElementType}>? ${varName} = jsonConvert.convert<List<${prop.arrayElementType}>>(json['${jsonKey}']);`);
                 }
             } else if (prop.isNestedObject && prop.nestedClass) {
-                const entityType = prop.dartType + this.config.classNameSuffix;
-                parts.push(`\tfinal ${entityType}? ${varName} = jsonConvert.convert<${entityType}>(json['${jsonKey}']);`);
+                const simpleType = this.getNestedClassName(prop.dartType);
+                parts.push(`\tfinal ${simpleType}? ${varName} = jsonConvert.convert<${simpleType}>(json['${jsonKey}']);`);
             } else {
                 parts.push(`\tfinal ${prop.dartType}? ${varName} = jsonConvert.convert<${prop.dartType}>(json['${jsonKey}']);`);
             }
@@ -735,12 +778,13 @@ ${properties.map(prop => `      '${prop.name}': entity.${prop.name}`).join(',\n'
             const camelCaseName = this.toCamelCase(prop.originalJsonKey);
             const fieldName = camelCaseName !== prop.originalJsonKey ? camelCaseName : prop.originalJsonKey;
 
-            // 确保嵌套类型使用正确的Entity类名
+            // 确保嵌套类型使用简洁的类名（单文件模式）
             let paramType = prop.dartType;
             if (prop.isArray && prop.arrayElementType && prop.isNestedObject) {
-                paramType = `List<${prop.arrayElementType}${this.config.classNameSuffix}>`;
+                const simpleElementType = this.getNestedClassName(prop.arrayElementType);
+                paramType = `List<${simpleElementType}>`;
             } else if (prop.isNestedObject) {
-                paramType = prop.dartType + this.config.classNameSuffix;
+                paramType = this.getNestedClassName(prop.dartType);
             }
 
             return `\t\t${paramType}? ${fieldName}`;
@@ -771,18 +815,31 @@ ${properties.map(prop => `      '${prop.name}': entity.${prop.name}`).join(',\n'
 
     private generateJsonConvertImports(allClasses: JsonClass[]): string {
         const imports = [];
-        for (const cls of allClasses) {
-            const className = this.getClassName(cls.name);
+        const importedFiles = new Set<string>();
 
-            // 检查是否有自定义文件路径（来自扫描的已存在文件）
-            const clsWithPath = cls as JsonClass & {filePath?: string};
-            if (clsWithPath.filePath) {
-                // 使用实际的文件路径
-                imports.push(`import 'package:${this.packageName}/${clsWithPath.filePath}.dart';`);
-            } else {
-                // 使用默认的models路径（新生成的文件）
-                const snakeClassName = this.toSnakeCase(className);
-                imports.push(`import 'package:${this.packageName}/models/${snakeClassName}.dart';`);
+        for (const cls of allClasses) {
+            // 导入所有主文件（包括历史类），嵌套类都在主文件中（原版风格）
+            const clsWithPath = cls as any;
+            const isHistoricalClass = !!clsWithPath.filePath;
+            const isNewMainClass = !isHistoricalClass && cls === allClasses.find(c => !(c as any).filePath);
+
+            if (isHistoricalClass || isNewMainClass) {
+                let importPath: string;
+
+                if (isHistoricalClass) {
+                    // 使用历史类的实际文件路径
+                    importPath = `import 'package:${this.packageName}/${clsWithPath.filePath}.dart';`;
+                } else {
+                    // 使用默认的models路径（新生成的文件）
+                    const className = this.getClassName(cls.name);
+                    const snakeClassName = this.toSnakeCase(className);
+                    importPath = `import 'package:${this.packageName}/models/${snakeClassName}.dart';`;
+                }
+
+                if (!importedFiles.has(importPath)) {
+                    imports.push(importPath);
+                    importedFiles.add(importPath);
+                }
             }
         }
         return imports.join('\n');
@@ -792,12 +849,26 @@ ${properties.map(prop => `      '${prop.name}': entity.${prop.name}`).join(',\n'
         const parts = [];
         parts.push('  static M? _getListChildType<M>(List<Map<String, dynamic>> data) {');
 
+        // 为所有主类生成转换（包括历史类），不包含嵌套类（原版风格）
+        const processedMainClasses = new Set<string>();
         for (const cls of allClasses) {
-            const className = this.getClassName(cls.name);
-            parts.push(`    if (<${className}>[] is M) {`);
-            parts.push(`      return data.map<${className}>((Map<String, dynamic> e) =>`);
-            parts.push(`          ${className}.fromJson(e)).toList() as M;`);
-            parts.push(`    }`);
+            // 判断是否为主类：有filePath属性（历史类）或者是新生成的第一个类（主类）
+            const clsWithPath = cls as any;
+            const isHistoricalClass = !!clsWithPath.filePath;
+            const isNewMainClass = !isHistoricalClass && cls === allClasses.find(c => !(c as any).filePath);
+
+            if (isHistoricalClass || isNewMainClass) {
+                // 对于历史类，直接使用类名；对于新类，添加Entity后缀
+                const className = isHistoricalClass ? cls.name : this.getClassName(cls.name);
+
+                if (!processedMainClasses.has(className)) {
+                    processedMainClasses.add(className);
+                    parts.push(`    if (<${className}>[] is M) {`);
+                    parts.push(`      return data.map<${className}>((Map<String, dynamic> e) =>`);
+                    parts.push(`          ${className}.fromJson(e)).toList() as M;`);
+                    parts.push(`    }`);
+                }
+            }
         }
 
         parts.push('');
@@ -815,9 +886,23 @@ ${properties.map(prop => `      '${prop.name}': entity.${prop.name}`).join(',\n'
         parts.push('  Map<String, JsonConvertFunction> convertFuncMap = {');
 
         const entries = [];
+        // 为所有主类生成映射（包括历史类），不包含嵌套类（原版风格）
+        const processedMainClasses = new Set<string>();
         for (const cls of allClasses) {
-            const className = this.getClassName(cls.name);
-            entries.push(`    (${className}).toString(): ${className}.fromJson`);
+            // 判断是否为主类：有filePath属性（历史类）或者是新生成的第一个类（主类）
+            const clsWithPath = cls as any;
+            const isHistoricalClass = !!clsWithPath.filePath;
+            const isNewMainClass = !isHistoricalClass && cls === allClasses.find(c => !(c as any).filePath);
+
+            if (isHistoricalClass || isNewMainClass) {
+                // 对于历史类，直接使用类名；对于新类，添加Entity后缀
+                const className = isHistoricalClass ? cls.name : this.getClassName(cls.name);
+
+                if (!processedMainClasses.has(className)) {
+                    processedMainClasses.add(className);
+                    entries.push(`    (${className}).toString(): ${className}.fromJson`);
+                }
+            }
         }
 
         parts.push(entries.join(',\n') + ',');

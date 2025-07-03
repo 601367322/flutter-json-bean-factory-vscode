@@ -165,21 +165,21 @@ export class JsonBeanGenerator {
         // Generate base JSON convert file with ALL classes (new + existing)
         await this.generateBaseJsonConvert(generatedDir, allClasses);
 
-        // Generate classes (only new ones)
-        for (const cls of classes) {
-            await this.generateClassFiles(cls, targetDir, generatedDir);
-        }
+        // Generate only the main class file (original plugin style)
+        // All nested classes are included in the main file, no separate files for nested classes
+        const mainClass = classes[0]; // The root class
+        await this.generateMainClassFile(mainClass, targetDir, generatedDir);
     }
 
-    private async generateClassFiles(cls: JsonClass, entityDir: string, generatedDir: string): Promise<void> {
+    private async generateMainClassFile(cls: JsonClass, entityDir: string, generatedDir: string): Promise<void> {
         const fileName = this.toSnakeCase(cls.name);
-        
-        // Generate entity file
+
+        // Generate single entity file containing all classes (original plugin style)
         const entityContent = this.codeGenerator.generateDartClass(cls);
         const entityPath = path.join(entityDir, `${fileName}.dart`);
         fs.writeFileSync(entityPath, entityContent);
 
-        // Generate helper file
+        // Generate helper file for the main class only
         const helperContent = this.codeGenerator.generateHelperFile(cls);
         const helperPath = path.join(generatedDir, `${fileName}.g.dart`);
         fs.writeFileSync(helperPath, helperContent);
