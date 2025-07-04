@@ -59,6 +59,18 @@
         "key": "alt+j",
         "mac": "alt+j",
         "when": "editorTextFocus && resourceExtname == .dart"
+      },
+      {
+        "command": "flutter-json-bean-factory.generateFromJson",
+        "key": "ctrl+alt+j",
+        "mac": "cmd+alt+j",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "flutter-json-bean-factory.regenerateBean",
+        "key": "ctrl+shift+j",
+        "mac": "cmd+shift+j",
+        "when": "editorTextFocus && resourceExtname == .dart"
       }
     ],
     "menus": {
