@@ -4,7 +4,9 @@
 [![Downloads](https://img.shields.io/visual-studio-marketplace/d/bingshushu.flutter-json-bean-factory)](https://marketplace.visualstudio.com/items?itemName=bingshushu.flutter-json-bean-factory)
 [![Rating](https://img.shields.io/visual-studio-marketplace/r/bingshushu.flutter-json-bean-factory)](https://marketplace.visualstudio.com/items?itemName=bingshushu.flutter-json-bean-factory)
 
-A powerful VSCode extension that automatically generates Dart model classes from JSON data for Flutter development. This extension is inspired by the popular [FlutterJsonBeanFactory](https://github.com/fluttercandies/FlutterJsonBeanFactory) IntelliJ plugin and brings the same functionality to VSCode.
+A powerful VSCode extension that automatically generates Dart model classes from JSON data for Flutter development. This extension is a VSCode port of the popular [FlutterJsonBeanFactory](https://github.com/fluttercandies/FlutterJsonBeanFactory) IntelliJ plugin, bringing the same powerful functionality to VSCode users.
+
+> 🤖 **100% AI Generated**: This entire project was developed using AI assistance, demonstrating the power of AI-driven development tools.
 
 ## ✨ Features
 
@@ -268,53 +270,34 @@ flutter packages pub run build_runner watch
 flutter packages pub run build_runner build --delete-conflicting-outputs
 ```
 
-## 📊 Comparison with Original Plugin
+## 🙏 Acknowledgments
 
-| Feature | IntelliJ Plugin | VSCode Extension |
-|---------|----------------|------------------|
-| JSON to Dart | ✅ | ✅ |
-| Null Safety | ✅ | ✅ |
-| Alt+J Regeneration | ✅ | ✅ |
-| Custom Annotations | ✅ | ✅ |
-| Nested Classes | ✅ | ✅ |
-| Configurable Paths | ✅ | ✅ |
-| Interactive UI | ✅ | ✅ |
-| Batch Operations | ✅ | ✅ |
+This project is based on the excellent [FlutterJsonBeanFactory](https://github.com/fluttercandies/FlutterJsonBeanFactory) IntelliJ plugin by the [FlutterCandies](https://github.com/fluttercandies) team. We are grateful for their innovative work and open-source contribution to the Flutter community.
 
-## 🤝 Contributing
+**Original Project**: [FlutterJsonBeanFactory for IntelliJ IDEA](https://github.com/fluttercandies/FlutterJsonBeanFactory)
+**Original Authors**: FlutterCandies Team
+**License**: MIT
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Special thanks to the FlutterCandies community for creating such a useful tool that inspired this VSCode adaptation.
 
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
+## 🤖 AI Development
+
+This entire VSCode extension was developed using 100% AI assistance, showcasing the capabilities of modern AI development tools. The project demonstrates how AI can effectively:
+
+- Port functionality between different IDE platforms
+- Understand and replicate complex code generation logic
+- Maintain feature parity while adapting to different extension APIs
+- Create comprehensive documentation and user interfaces
+
+This serves as an example of AI-driven software development and the potential for AI to accelerate cross-platform tool development.
 
 ## 📄 License
 
-This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
+MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🙏 Acknowledgments
+## 🔗 Links
 
-- Inspired by [FlutterJsonBeanFactory](https://github.com/fluttercandies/FlutterJsonBeanFactory) IntelliJ plugin
-- Thanks to the Flutter and Dart communities
-
-## 📞 Support
-
-- [GitHub Issues](https://github.com/601367322/flutter-json-bean-factory-vscode/issues)
 - [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=bingshushu.flutter-json-bean-factory)
-
-## 📈 Changelog
-
-### v1.0.0
-- Initial release
-- JSON to Dart model generation
-- Null safety support
-- Configurable generation options
-- Alt+J batch regeneration
-- Interactive JSON input dialog
-
----
-
-**Happy coding with Flutter! 🚀**
+- [Original IntelliJ Plugin](https://github.com/fluttercandies/FlutterJsonBeanFactory)
+- [FlutterCandies Organization](https://github.com/fluttercandies)
+- [Report Issues](https://github.com/your-username/flutter-json-bean-factory-vscode/issues)
