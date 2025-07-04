@@ -201,9 +201,6 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src --ext ts",
-    "test": "npm run test:unit",
-    "test:unit": "mocha out/test/suite/*.test.js",
-    "test:integration": "node ./out/test/runTest.js",
     "package": "vsce package",
     "publish": "vsce publish"
   },

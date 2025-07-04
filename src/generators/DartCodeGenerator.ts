@@ -441,6 +441,8 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
             }
 
             // 生成字段声明（原版风格）
+            const setDefault = (this.config as any).setDefault;
+
             if (prop.isNestedObject && !prop.isArray) {
                 // 对象字段使用late关键字（原版风格）
                 parts.push(`\t${fieldType.includes('late ') ? '' : 'late '}${fieldType} ${fieldName};`);
@@ -448,13 +450,18 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
                 // dynamic字段不设置默认值（原版风格）
                 parts.push(`\t${fieldType} ${fieldName};`);
             } else {
-                // 其他字段使用默认值
+                // 其他字段的处理逻辑
                 const correctedDefaultValue = prop.isArray ? '[]' : defaultValue;
+
                 if (isOpenNullable && prop.dartType !== 'dynamic') {
                     // 如果是nullable字段，不设置默认值（原版风格）
                     parts.push(`\t${fieldType} ${fieldName};`);
-                } else {
+                } else if (setDefault) {
+                    // 如果选择了默认值，设置默认值
                     parts.push(`\t${fieldType} ${fieldName} = ${correctedDefaultValue};`);
+                } else {
+                    // 如果既不选择默认值，也不选择nullable，使用late关键字
+                    parts.push(`\tlate ${fieldType} ${fieldName};`);
                 }
             }
         }

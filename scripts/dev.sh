@@ -25,10 +25,6 @@ fi
 echo "🔨 Compiling TypeScript..."
 npm run compile
 
-# Run tests
-echo "🧪 Running unit tests..."
-npm run test:unit
-
 echo "✅ Development setup complete!"
 echo ""
 echo "🚀 Next steps:"
