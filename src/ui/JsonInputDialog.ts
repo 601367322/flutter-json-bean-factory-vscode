@@ -182,19 +182,25 @@ export class JsonInputDialog {
             margin: 0 0 10px 0;
             color: var(--vscode-foreground);
         }
-        .default-row {
+        .default-values-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+        }
+        .default-item {
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 8px;
+            gap: 5px;
         }
-        .default-row label {
-            min-width: 60px;
+        .default-item label {
             margin-bottom: 0;
             font-weight: normal;
+            white-space: nowrap;
         }
-        .default-row input {
-            width: 80px;
+        .default-item input {
+            width: 60px;
+            min-width: 60px;
         }
         .button-container {
             display: flex;
@@ -266,21 +272,23 @@ export class JsonInputDialog {
         
         <div id="defaultValues" class="default-values" style="display: ${this.settings.setDefault ? 'block' : 'none'}">
             <h4>Default Values:</h4>
-            <div class="default-row">
-                <label>String:</label>
-                <input type="text" id="stringDefault" value="${this.settings.stringDefaultValue || "''"}" />
-            </div>
-            <div class="default-row">
-                <label>int:</label>
-                <input type="text" id="intDefault" value="${this.settings.intDefaultValue || '0'}" />
-            </div>
-            <div class="default-row">
-                <label>bool:</label>
-                <input type="text" id="boolDefault" value="${this.settings.boolDefaultValue || 'false'}" />
-            </div>
-            <div class="default-row">
-                <label>List:</label>
-                <input type="text" id="listDefault" value="${this.settings.listDefaultValue || '[]'}" />
+            <div class="default-values-container">
+                <div class="default-item">
+                    <label>String:</label>
+                    <input type="text" id="stringDefault" value="${this.settings.stringDefaultValue || "''"}" />
+                </div>
+                <div class="default-item">
+                    <label>int:</label>
+                    <input type="text" id="intDefault" value="${this.settings.intDefaultValue || '0'}" />
+                </div>
+                <div class="default-item">
+                    <label>bool:</label>
+                    <input type="text" id="boolDefault" value="${this.settings.boolDefaultValue || 'false'}" />
+                </div>
+                <div class="default-item">
+                    <label>List:</label>
+                    <input type="text" id="listDefault" value="${this.settings.listDefaultValue || '[]'}" />
+                </div>
             </div>
         </div>
         

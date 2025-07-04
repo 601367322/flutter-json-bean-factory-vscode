@@ -1,24 +1,16 @@
 import * as vscode from 'vscode';
 import { JsonBeanGenerator } from './generators/JsonBeanGenerator';
-import { FlutterProjectDetector } from './utils/FlutterProjectDetector';
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('Flutter JSON Bean Factory extension is now active!');
 
     const generator = new JsonBeanGenerator(context);
-    const projectDetector = new FlutterProjectDetector();
 
     // Register command for generating Dart bean from JSON
     const generateFromJsonCommand = vscode.commands.registerCommand(
         'flutter-json-bean-factory.generateFromJson',
         async (uri?: vscode.Uri) => {
             try {
-                // Check if this is a Flutter project
-                if (!await projectDetector.isFlutterProject()) {
-                    vscode.window.showWarningMessage('This command only works in Flutter projects.');
-                    return;
-                }
-
                 await generator.generateFromJson(uri);
             } catch (error) {
                 vscode.window.showErrorMessage(`Error generating Dart bean: ${error}`);
@@ -37,11 +29,6 @@ export function activate(context: vscode.ExtensionContext) {
                     return;
                 }
 
-                if (!await projectDetector.isFlutterProject()) {
-                    vscode.window.showWarningMessage('This command only works in Flutter projects.');
-                    return;
-                }
-
                 await generator.regenerateBean(activeEditor.document.uri);
             } catch (error) {
                 vscode.window.showErrorMessage(`Error regenerating Dart bean: ${error}`);
@@ -54,11 +41,6 @@ export function activate(context: vscode.ExtensionContext) {
         'flutter-json-bean-factory.regenerateAllBeans',
         async () => {
             try {
-                if (!await projectDetector.isFlutterProject()) {
-                    vscode.window.showWarningMessage('This command only works in Flutter projects.');
-                    return;
-                }
-
                 await generator.regenerateAllBeans();
             } catch (error) {
                 vscode.window.showErrorMessage(`Error regenerating all Dart beans: ${error}`);
