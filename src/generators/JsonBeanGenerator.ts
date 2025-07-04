@@ -154,28 +154,56 @@ export class JsonBeanGenerator {
         // 扫描已存在的entity文件，获取所有已生成的models
         const existingModels = await this.scanExistingModels();
 
+        // Generate only the main class file (original plugin style)
+        // All nested classes are included in the main file, no separate files for nested classes
+        const mainClass = classes[0]; // The root class
+        const fileName = this.toSnakeCase(mainClass.name);
+        const entityPath = path.join(targetDir, `${fileName}.dart`);
+
+        // Calculate relative path from project root for imports
+        const relativePath = path.relative(projectRoot, entityPath);
+        let importPath = relativePath.replace(/\.dart$/, '').replace(/\\/g, '/');
+
+        // Remove lib/ prefix for package imports
+        if (importPath.startsWith('lib/')) {
+            importPath = importPath.substring(4);
+        }
+
+        // Add import path to new classes for json_convert_content.dart
+        const newClassesWithPath = classes.map(cls => ({
+            ...cls,
+            filePath: importPath
+        }));
+
         // 合并新生成的classes和已存在的models
-        const allClasses = this.mergeWithExistingModels(classes, existingModels);
+        const allClasses = this.mergeWithExistingModels(newClassesWithPath, existingModels);
 
         // Generate base JSON convert file with ALL classes (new + existing)
         await this.generateBaseJsonConvert(generatedDir, allClasses);
 
-        // Generate only the main class file (original plugin style)
-        // All nested classes are included in the main file, no separate files for nested classes
-        const mainClass = classes[0]; // The root class
         await this.generateMainClassFile(mainClass, targetDir, generatedDir);
     }
 
     private async generateMainClassFile(cls: JsonClass, entityDir: string, generatedDir: string): Promise<void> {
         const fileName = this.toSnakeCase(cls.name);
+        const projectRoot = this.projectDetector.getFlutterProjectRoot()!;
 
         // Generate single entity file containing all classes (original plugin style)
         const entityContent = this.codeGenerator.generateDartClass(cls);
         const entityPath = path.join(entityDir, `${fileName}.dart`);
         fs.writeFileSync(entityPath, entityContent);
 
+        // Calculate relative path from project root for imports
+        const relativePath = path.relative(projectRoot, entityPath);
+        let importPath = relativePath.replace(/\.dart$/, '').replace(/\\/g, '/');
+
+        // Remove lib/ prefix for package imports
+        if (importPath.startsWith('lib/')) {
+            importPath = importPath.substring(4);
+        }
+
         // Generate helper file for the main class only
-        const helperContent = this.codeGenerator.generateHelperFile(cls);
+        const helperContent = this.codeGenerator.generateHelperFile(cls, importPath);
         const helperPath = path.join(generatedDir, `${fileName}.g.dart`);
         fs.writeFileSync(helperPath, helperContent);
     }

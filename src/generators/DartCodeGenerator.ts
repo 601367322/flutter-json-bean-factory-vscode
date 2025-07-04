@@ -80,10 +80,10 @@ export class DartCodeGenerator {
     /**
      * Generate helper file for JSON conversion (original style)
      */
-    generateHelperFile(jsonClass: JsonClass): string {
+    generateHelperFile(jsonClass: JsonClass, entityImportPath?: string): string {
         const className = this.getClassName(jsonClass.name);
         const allClasses = this.collectAllClasses(jsonClass);
-        const imports = this.generateHelperImports(className, allClasses);
+        const imports = this.generateHelperImports(className, allClasses, entityImportPath);
 
         // 生成所有类的函数（原版风格）
         const allFunctions: string[] = [];
@@ -389,14 +389,20 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
         return allClasses;
     }
 
-    private generateHelperImports(className: string, allClasses: JsonClass[]): string {
+    private generateHelperImports(className: string, allClasses: JsonClass[], entityImportPath?: string): string {
         const imports = [`import 'package:${this.packageName}/generated/json/base/json_convert_content.dart';`];
 
         // 只导入主文件，嵌套类都在主文件中（原版风格）
-        const mainClass = allClasses[0]; // 主类
-        const entityClassName = this.getClassName(mainClass.name);
-        const snakeClassName = this.toSnakeCase(entityClassName);
-        imports.push(`import 'package:${this.packageName}/models/${snakeClassName}.dart';`);
+        if (entityImportPath) {
+            // 使用实际的文件路径
+            imports.push(`import 'package:${this.packageName}/${entityImportPath}.dart';`);
+        } else {
+            // 使用默认的models路径
+            const mainClass = allClasses[0]; // 主类
+            const entityClassName = this.getClassName(mainClass.name);
+            const snakeClassName = this.toSnakeCase(entityClassName);
+            imports.push(`import 'package:${this.packageName}/models/${snakeClassName}.dart';`);
+        }
 
         return imports.join('\n');
     }
