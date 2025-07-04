@@ -332,20 +332,14 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
     }
 
     private getNestedClassName(originalName: string): string {
-        // 1:1还原原版插件逻辑
-        // 原版逻辑：嵌套类名 = parentName + fieldTypeName
-        // 其中fieldTypeName是通过FieldUtils.toFieldTypeName(key)生成的
+        // 对于独立的类名（如PageConfigItem），不应该被简化
+        // 只有当类名明显是重复生成的嵌套类名时才进行简化
 
-        // 移除主类名前缀，保留字段类型名
-        // 例如：GroupListGroupListItem -> GroupListItem -> Group (去掉Item后缀)
-        //      GroupListGroupListItemUserListItem -> UserListItem -> UserInfo
-
-        // 先移除重复的前缀
         let className = originalName;
 
-        // 查找重复的模式并移除
+        // 查找重复的模式并移除（只处理明显的重复前缀）
         const parts = className.split(/(?=[A-Z])/);
-        if (parts.length > 2) {
+        if (parts.length > 4) { // 只有当类名很长时才考虑简化
             // 寻找重复的前缀模式
             const firstHalf = parts.slice(0, Math.floor(parts.length / 2)).join('');
             const secondHalf = parts.slice(Math.floor(parts.length / 2)).join('');
@@ -356,11 +350,8 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
             }
         }
 
-        // 通用规则：如果以Item结尾，去掉Item；否则保持原样
-        if (className.endsWith('Item')) {
-            return className.substring(0, className.length - 4);
-        }
-
+        // 不再自动移除Item后缀，保持原始类名
+        // 这样可以避免PageConfigItem被错误地简化为PageConfig
         return className;
     }
 
@@ -709,7 +700,7 @@ ${properties.map(prop => `      '${prop.name}': entity.${prop.name}`).join(',\n'
         }
     }
 
-    private generateFromJsonFunction(className: string, properties: JsonProperty[]): string {
+    generateFromJsonFunction(className: string, properties: JsonProperty[]): string {
         const functionName = `$${className}FromJson`;
         const parts = [];
 
@@ -719,9 +710,8 @@ ${properties.map(prop => `      '${prop.name}': entity.${prop.name}`).join(',\n'
 
         for (const prop of properties) {
             const jsonKey = prop.originalJsonKey; // 原始JSON key
-            const camelCaseName = this.toCamelCase(prop.originalJsonKey);
-            const fieldName = camelCaseName !== prop.originalJsonKey ? camelCaseName : prop.originalJsonKey; // 使用驼峰命名的字段名
-            const varName = this.toCamelCase(prop.originalJsonKey);
+            const fieldName = prop.name; // 实际的字段名（如 groupId, userId）
+            const varName = this.toCamelCase(prop.originalJsonKey); // 临时变量名
 
             // 对于dynamic类型，不添加?标记（原版风格）
             const typeNullString = prop.dartType === 'dynamic' ? '' : '?';
@@ -758,7 +748,7 @@ ${properties.map(prop => `      '${prop.name}': entity.${prop.name}`).join(',\n'
         return parts.join('\n');
     }
 
-    private generateToJsonFunction(className: string, properties: JsonProperty[]): string {
+    generateToJsonFunction(className: string, properties: JsonProperty[]): string {
         const functionName = `$${className}ToJson`;
         const parts = [];
 
@@ -767,15 +757,21 @@ ${properties.map(prop => `      '${prop.name}': entity.${prop.name}`).join(',\n'
 
         for (const prop of properties) {
             const jsonKey = prop.originalJsonKey; // 原始JSON key
-            const camelCaseName = this.toCamelCase(prop.originalJsonKey);
-            const fieldName = camelCaseName !== prop.originalJsonKey ? camelCaseName : prop.originalJsonKey; // 使用驼峰命名的字段名
+            const fieldName = prop.name; // 实际的字段名（如 groupId, userId）
 
             if (prop.isArray && prop.isNestedObject) {
-                // 对于数组字段，使用正常的访问（因为有默认值[]）
-                parts.push(`\tdata['${jsonKey}'] = entity.${fieldName}.map((v) => v.toJson()).toList();`);
+                // 对于数组字段，根据toJson可空性决定使用 .map() 还是 ?.map()
+                const isNullableForToJson = (prop as any).isNullableForToJson ?? prop.isNullable;
+                if (isNullableForToJson) {
+                    parts.push(`\tdata['${jsonKey}'] = entity.${fieldName}?.map((v) => v.toJson()).toList();`);
+                } else {
+                    parts.push(`\tdata['${jsonKey}'] = entity.${fieldName}.map((v) => v.toJson()).toList();`);
+                }
             } else if (prop.isNestedObject) {
-                // 对于late字段，使用正常的访问（因为是late初始化）
-                parts.push(`\tdata['${jsonKey}'] = entity.${fieldName}.toJson();`);
+                // 对于嵌套对象，根据toJson可空性决定使用 .toJson() 还是 ?.toJson()
+                const isNullableForToJson = (prop as any).isNullableForToJson ?? prop.isNullable;
+                const toJsonOperator = isNullableForToJson ? '?.toJson()' : '.toJson()';
+                parts.push(`\tdata['${jsonKey}'] = entity.${fieldName}${toJsonOperator};`);
             } else {
                 parts.push(`\tdata['${jsonKey}'] = entity.${fieldName};`);
             }
@@ -787,15 +783,20 @@ ${properties.map(prop => `      '${prop.name}': entity.${prop.name}`).join(',\n'
         return parts.join('\n');
     }
 
-    private generateCopyWithExtension(className: string, properties: JsonProperty[]): string {
+    generateCopyWithExtension(className: string, properties: JsonProperty[]): string {
         const parts = [];
 
         parts.push(`extension ${className}Extension on ${className} {`);
 
+        // If no properties, generate empty extension (like original plugin)
+        if (properties.length === 0) {
+            parts.push('}');
+            return parts.join('\n');
+        }
+
         // Generate copyWith method - all parameters are nullable in copyWith
         const params = properties.map(prop => {
-            const camelCaseName = this.toCamelCase(prop.originalJsonKey);
-            const fieldName = camelCaseName !== prop.originalJsonKey ? camelCaseName : prop.originalJsonKey;
+            const fieldName = prop.name; // 实际的字段名
 
             // 确保嵌套类型使用简洁的类名（单文件模式）
             let paramType = prop.dartType;
@@ -817,8 +818,7 @@ ${properties.map(prop => `      '${prop.name}': entity.${prop.name}`).join(',\n'
         parts.push(`\t\treturn ${className}()`);
 
         for (const prop of properties) {
-            const camelCaseName = this.toCamelCase(prop.originalJsonKey);
-            const fieldName = camelCaseName !== prop.originalJsonKey ? camelCaseName : prop.originalJsonKey;
+            const fieldName = prop.name; // 实际的字段名
             parts.push(`\t\t\t..${fieldName} = ${fieldName} ?? this.${fieldName}`);
         }
 
@@ -939,6 +939,183 @@ ${properties.map(prop => `      '${prop.name}': entity.${prop.name}`).join(',\n'
         parts.push('}');
 
         return parts.join('\n');
+    }
+
+    /**
+     * Generate base JSON convert file from entity files (original plugin style)
+     */
+    generateBaseJsonConvertFromEntityFiles(allEntityFiles: any[], packageName: string): string {
+        const imports = [];
+        const classEntries = [];
+
+        // Add imports for all entity files
+        for (const entityFile of allEntityFiles) {
+            imports.push(entityFile.importStatement);
+
+            // Add entries for all classes in this file
+            for (const dartClass of entityFile.classes) {
+                classEntries.push(`\t\t(${dartClass.className}).toString(): ${dartClass.className}.fromJson,`);
+            }
+        }
+
+        // Generate _getListChildType entries
+        const listChildTypeEntries = [];
+        for (const entityFile of allEntityFiles) {
+            for (const dartClass of entityFile.classes) {
+                listChildTypeEntries.push(`\t\tif(<${dartClass.className}>[] is M){`);
+                listChildTypeEntries.push(`\t\t\treturn data.map<${dartClass.className}>((Map<String, dynamic> e) => ${dartClass.className}.fromJson(e)).toList() as M;`);
+                listChildTypeEntries.push(`\t\t}`);
+            }
+        }
+
+        return `// ignore_for_file: non_constant_identifier_names
+// ignore_for_file: camel_case_types
+// ignore_for_file: prefer_single_quotes
+
+// This file is automatically generated. DO NOT EDIT, all your changes would be lost.
+import 'package:flutter/material.dart' show debugPrint;
+${imports.join('\n')}
+
+JsonConvert jsonConvert = JsonConvert();
+typedef JsonConvertFunction<T> = T Function(Map<String, dynamic> json);
+typedef EnumConvertFunction<T> = T Function(String value);
+typedef ConvertExceptionHandler = void Function(Object error, StackTrace stackTrace);
+
+extension MapSafeExt<K, V> on Map<K, V> {
+  T? getOrNull<T>(K? key) {
+    if (!containsKey(key) || key == null) {
+      return null;
+    } else {
+      return this[key] as T?;
+    }
+  }
+}
+
+class JsonConvert {
+\tstatic ConvertExceptionHandler? onError;
+\tJsonConvertClassCollection convertFuncMap = JsonConvertClassCollection();
+\t
+\tvoid reassembleConvertFuncMap(){
+\t\tbool isReleaseMode = const bool.fromEnvironment('dart.vm.product');
+\t\tif(!isReleaseMode) {
+\t\t\tconvertFuncMap = JsonConvertClassCollection();
+\t\t}
+\t}
+\t
+  T? convert<T>(dynamic value, {EnumConvertFunction? enumConvert}) {
+    if (value == null) {
+      return null;
+    }
+    if (value is T) {
+      return value;
+    }
+    try {
+      return _asT<T>(value, enumConvert: enumConvert);
+    } catch (e, stackTrace) {
+      debugPrint('asT<\$T> \$e \$stackTrace');
+      if (onError != null) {
+         onError!(e, stackTrace);
+      }
+      return null;
+    }
+  }
+
+  List<T?>? convertList<T>(List<dynamic>? value, {EnumConvertFunction? enumConvert}) {
+    if (value == null) {
+      return null;
+    }
+    try {
+      return value.map((dynamic e) => _asT<T>(e,enumConvert: enumConvert)).toList();
+    } catch (e, stackTrace) {
+      debugPrint('asT<\$T> \$e \$stackTrace');
+      if (onError != null) {
+         onError!(e, stackTrace);
+      }
+      return <T>[];
+    }
+  }
+
+  List<T>? convertListNotNull<T>(dynamic value, {EnumConvertFunction? enumConvert}) {
+    if (value == null) {
+      return null;
+    }
+    try {
+      return (value as List<dynamic>).map((dynamic e) => _asT<T>(e,enumConvert: enumConvert)!).toList();
+    } catch (e, stackTrace) {
+      debugPrint('asT<\$T> \$e \$stackTrace');
+      if (onError != null) {
+         onError!(e, stackTrace);
+      }
+      return <T>[];
+    }
+  }
+
+  T? _asT<T extends Object?>(dynamic value, {EnumConvertFunction? enumConvert}) {
+    final String type = T.toString();
+    final String valueS = value.toString();
+    if (enumConvert != null) {
+      return enumConvert(valueS) as T;
+    } else if (type == "String") {
+      return valueS as T;
+    } else if (type == "double") {
+      return double.parse(valueS) as T;
+    } else if (type == "DateTime") {
+      return DateTime.parse(valueS) as T;
+    } else if (type == "bool") {
+      if (valueS == '0' || valueS == '1') {
+        return (valueS == '1') as T;
+      }
+      return (valueS == 'true') as T;
+    } else if (type == "Map" || type.startsWith("Map<")) {
+      return value as T;
+    } else {
+      if (convertFuncMap.containsKey(type)) {
+        if (value == null) {
+          return null;
+        }
+        var covertFunc = convertFuncMap[type]!;
+        if(covertFunc is Map<String, dynamic>) {
+          return covertFunc(value as Map<String, dynamic>) as T;
+        }else{
+          return covertFunc(Map<String, dynamic>.from(value)) as T;
+        }
+      } else {
+        throw UnimplementedError('\$type unimplemented,you can try running the app again');
+      }
+    }
+  }
+
+\t//list is returned by type
+\tstatic M? _getListChildType<M>(List<Map<String, dynamic>> data) {
+${listChildTypeEntries.join('\n')}
+\t\tdebugPrint("\$M not found");
+\t\treturn null;
+\t}
+
+\tstatic M? fromJsonAsT<M>(dynamic json) {
+\t\tif (json is M) {
+\t\t\treturn json;
+\t\t}
+\t\tif (json is List) {
+\t\t\treturn _getListChildType<M>(json.map((dynamic e) => e as Map<String, dynamic>).toList());
+\t\t} else {
+\t\t\treturn jsonConvert.convert<M>(json);
+\t\t}
+\t}
+}
+
+\tclass JsonConvertClassCollection {
+\tMap<String, JsonConvertFunction> convertFuncMap = {
+${classEntries.join('\n')}
+\t};
+\t
+bool containsKey(String type) {
+return convertFuncMap.containsKey(type);
+}
+JsonConvertFunction? operator [](String key) {
+return convertFuncMap[key];
+}
+\t}`;
     }
 
     private toSnakeCase(str: string): string {

@@ -49,7 +49,24 @@ export function activate(context: vscode.ExtensionContext) {
         }
     );
 
-    context.subscriptions.push(generateFromJsonCommand, regenerateBeanCommand);
+    // Register command for regenerating all Dart beans
+    const regenerateAllBeansCommand = vscode.commands.registerCommand(
+        'flutter-json-bean-factory.regenerateAllBeans',
+        async () => {
+            try {
+                if (!await projectDetector.isFlutterProject()) {
+                    vscode.window.showWarningMessage('This command only works in Flutter projects.');
+                    return;
+                }
+
+                await generator.regenerateAllBeans();
+            } catch (error) {
+                vscode.window.showErrorMessage(`Error regenerating all Dart beans: ${error}`);
+            }
+        }
+    );
+
+    context.subscriptions.push(generateFromJsonCommand, regenerateBeanCommand, regenerateAllBeansCommand);
 
     // Show welcome message on first activation
     const hasShownWelcome = context.globalState.get('hasShownWelcome', false);

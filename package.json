@@ -46,6 +46,11 @@
         "command": "flutter-json-bean-factory.regenerateBean",
         "title": "Regenerate Dart Bean",
         "category": "Flutter JSON Bean Factory"
+      },
+      {
+        "command": "flutter-json-bean-factory.regenerateAllBeans",
+        "title": "Regenerate All Dart Beans",
+        "category": "Flutter JSON Bean Factory"
       }
     ],
     "keybindings": [
@@ -62,6 +67,11 @@
           "command": "flutter-json-bean-factory.generateFromJson",
           "when": "explorerResourceIsFolder",
           "group": "navigation@1"
+        },
+        {
+          "command": "flutter-json-bean-factory.regenerateAllBeans",
+          "when": "explorerResourceIsFolder",
+          "group": "navigation@2"
         }
       ],
       "editor/context": [
@@ -69,6 +79,11 @@
           "command": "flutter-json-bean-factory.regenerateBean",
           "when": "resourceExtname == .dart",
           "group": "1_modification@1"
+        },
+        {
+          "command": "flutter-json-bean-factory.regenerateAllBeans",
+          "when": "resourceExtname == .dart",
+          "group": "1_modification@2"
         }
       ]
     },
