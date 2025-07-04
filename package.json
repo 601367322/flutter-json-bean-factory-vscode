@@ -7,12 +7,12 @@
   "icon": "images/icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/fluttercandies/FlutterJsonBeanFactoryVSCode.git"
+    "url": "https://github.com/601367322/flutter-json-bean-factory-vscode.git"
   },
   "bugs": {
-    "url": "https://github.com/fluttercandies/FlutterJsonBeanFactoryVSCode/issues"
+    "url": "https://github.com/601367322/flutter-json-bean-factory-vscode/issues"
   },
-  "homepage": "https://github.com/fluttercandies/FlutterJsonBeanFactoryVSCode#readme",
+  "homepage": "https://github.com/601367322/flutter-json-bean-factory-vscode",
   "engines": {
     "vscode": "^1.74.0"
   },

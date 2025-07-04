@@ -285,7 +285,10 @@ export class CodeGenerationOrchestrator {
 
         // Update config with dialog settings
         if (settings.isOpenNullable !== undefined) {
-            config.forceNonNullable = !settings.isOpenNullable;
+            // isOpenNullable means we want nullable fields (add ?), so forceNonNullable should be false
+            config.forceNonNullable = false;
+            // Add the nullable setting to config for use in code generation
+            (config as any).isOpenNullable = settings.isOpenNullable;
         }
 
         // Apply default values if setDefault is enabled

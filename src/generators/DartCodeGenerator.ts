@@ -431,6 +431,15 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
                 fieldType = simpleType;
             }
 
+            // 检查是否需要添加nullable标记（问号）
+            const isOpenNullable = (this.config as any).isOpenNullable;
+            if (isOpenNullable && prop.dartType !== 'dynamic') {
+                // 如果开启了nullable选项且不是dynamic类型，添加问号
+                if (!fieldType.endsWith('?')) {
+                    fieldType = fieldType + '?';
+                }
+            }
+
             // 生成字段声明（原版风格）
             if (prop.isNestedObject && !prop.isArray) {
                 // 对象字段使用late关键字（原版风格）
@@ -441,7 +450,12 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
             } else {
                 // 其他字段使用默认值
                 const correctedDefaultValue = prop.isArray ? '[]' : defaultValue;
-                parts.push(`\t${fieldType} ${fieldName} = ${correctedDefaultValue};`);
+                if (isOpenNullable && prop.dartType !== 'dynamic') {
+                    // 如果是nullable字段，不设置默认值（原版风格）
+                    parts.push(`\t${fieldType} ${fieldName};`);
+                } else {
+                    parts.push(`\t${fieldType} ${fieldName} = ${correctedDefaultValue};`);
+                }
             }
         }
 
@@ -542,9 +556,18 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
             if (prop.dartType === 'dynamic') {
                 parts.push(`\t${instanceName}.${fieldName} = ${varName};`);
             } else {
-                parts.push(`\tif (${varName} != null) {`);
-                parts.push(`\t\t${instanceName}.${fieldName} = ${varName};`);
-                parts.push(`\t}`);
+                const isOpenNullable = (this.config as any).isOpenNullable;
+                if (isOpenNullable) {
+                    // 当开启nullable选项时，仍然需要null检查，但字段本身是nullable的
+                    parts.push(`\tif (${varName} != null) {`);
+                    parts.push(`\t\t${instanceName}.${fieldName} = ${varName};`);
+                    parts.push(`\t}`);
+                } else {
+                    // 原来的逻辑
+                    parts.push(`\tif (${varName} != null) {`);
+                    parts.push(`\t\t${instanceName}.${fieldName} = ${varName};`);
+                    parts.push(`\t}`);
+                }
             }
         }
 
