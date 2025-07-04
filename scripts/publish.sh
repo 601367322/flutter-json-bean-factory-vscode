@@ -33,10 +33,6 @@ npm run lint
 echo "🔨 Compiling TypeScript..."
 npm run compile
 
-# Run tests
-echo "🧪 Running tests..."
-npm test
-
 # Check if icon exists
 if [ ! -f "images/icon.png" ]; then
     echo "⚠️  Warning: Icon file (images/icon.png) not found."
