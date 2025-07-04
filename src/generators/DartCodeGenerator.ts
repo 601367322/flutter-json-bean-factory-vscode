@@ -729,7 +729,12 @@ ${properties.map(prop => `      '${prop.name}': entity.${prop.name}`).join(',\n'
                 const simpleType = this.getNestedClassName(prop.dartType);
                 parts.push(`\tfinal ${simpleType}${typeNullString} ${varName} = jsonConvert.convert<${simpleType}>(json['${jsonKey}']);`);
             } else {
-                parts.push(`\tfinal ${prop.dartType}${typeNullString} ${varName} = jsonConvert.convert<${prop.dartType}>(json['${jsonKey}']);`);
+                // 对于dynamic类型，直接从JSON获取值，不使用jsonConvert.convert
+                if (prop.dartType === 'dynamic') {
+                    parts.push(`\tfinal ${prop.dartType} ${varName} = json['${jsonKey}'];`);
+                } else {
+                    parts.push(`\tfinal ${prop.dartType}${typeNullString} ${varName} = jsonConvert.convert<${prop.dartType}>(json['${jsonKey}']);`);
+                }
             }
 
             // 对于dynamic类型，不需要null检查（原版风格）
@@ -809,21 +814,26 @@ ${properties.map(prop => `      '${prop.name}': entity.${prop.name}`).join(',\n'
 
             // 对于dynamic类型，不添加?标记（原版风格）
             const typeNullString = prop.dartType === 'dynamic' ? '' : '?';
-            return `\t\t${paramType}${typeNullString} ${fieldName}`;
+            return `    ${paramType}${typeNullString} ${fieldName}`;
         }).join(',\n');
 
-        parts.push(`\t${className} copyWith({`);
+        parts.push(`  ${className} copyWith({`);
         parts.push(params + ',');
-        parts.push('\t}) {');
-        parts.push(`\t\treturn ${className}()`);
+        parts.push('  }) {');
+        parts.push(`    return ${className}()`);
 
         for (const prop of properties) {
             const fieldName = prop.name; // 实际的字段名
-            parts.push(`\t\t\t..${fieldName} = ${fieldName} ?? this.${fieldName}`);
+            parts.push(`      ..${fieldName} = ${fieldName} ?? this.${fieldName}`);
         }
 
-        parts.push('\t\t\t;');
-        parts.push('\t}');
+        // 最后一个属性后面直接加分号，不单独一行
+        if (properties.length > 0) {
+            const lastIndex = parts.length - 1;
+            parts[lastIndex] = parts[lastIndex] + ';';
+        }
+
+        parts.push('  }');
         parts.push('}');
 
         return parts.join('\n');
@@ -992,15 +1002,27 @@ extension MapSafeExt<K, V> on Map<K, V> {
 }
 
 class JsonConvert {
-\tstatic ConvertExceptionHandler? onError;
-\tJsonConvertClassCollection convertFuncMap = JsonConvertClassCollection();
-\t
-\tvoid reassembleConvertFuncMap(){
-\t\tbool isReleaseMode = const bool.fromEnvironment('dart.vm.product');
-\t\tif(!isReleaseMode) {
-\t\t\tconvertFuncMap = JsonConvertClassCollection();
-\t\t}
-\t}
+  static ConvertExceptionHandler? onError;
+  JsonConvertClassCollection convertFuncMap = JsonConvertClassCollection();
+
+  /// When you are in the development, to generate a new model class, hot-reload doesn't find new generation model class, you can build on MaterialApp method called jsonConvert. ReassembleConvertFuncMap (); This method only works in a development environment
+  /// https://flutter.cn/docs/development/tools/hot-reload
+  /// class MyApp extends StatelessWidget {
+  ///    const MyApp({Key? key})
+  ///        : super(key: key);
+  ///
+  ///    @override
+  ///    Widget build(BuildContext context) {
+  ///      jsonConvert.reassembleConvertFuncMap();
+  ///      return MaterialApp();
+  ///    }
+  /// }
+  void reassembleConvertFuncMap() {
+    bool isReleaseMode = const bool.fromEnvironment('dart.vm.product');
+    if (!isReleaseMode) {
+      convertFuncMap = JsonConvertClassCollection();
+    }
+  }
 \t
   T? convert<T>(dynamic value, {EnumConvertFunction? enumConvert}) {
     if (value == null) {
@@ -1057,6 +1079,13 @@ class JsonConvert {
       return enumConvert(valueS) as T;
     } else if (type == "String") {
       return valueS as T;
+    } else if (type == "int") {
+      final int? intValue = int.tryParse(valueS);
+      if (intValue == null) {
+        return double.tryParse(valueS)?.toInt() as T?;
+      } else {
+        return intValue as T;
+      }
     } else if (type == "double") {
       return double.parse(valueS) as T;
     } else if (type == "DateTime") {
@@ -1085,37 +1114,38 @@ class JsonConvert {
     }
   }
 
-\t//list is returned by type
-\tstatic M? _getListChildType<M>(List<Map<String, dynamic>> data) {
+  //list is returned by type
+  static M? _getListChildType<M>(List<Map<String, dynamic>> data) {
 ${listChildTypeEntries.join('\n')}
-\t\tdebugPrint("\$M not found");
-\t\treturn null;
-\t}
+    debugPrint("\$M not found");
+    return null;
+  }
 
-\tstatic M? fromJsonAsT<M>(dynamic json) {
-\t\tif (json is M) {
-\t\t\treturn json;
-\t\t}
-\t\tif (json is List) {
-\t\t\treturn _getListChildType<M>(json.map((dynamic e) => e as Map<String, dynamic>).toList());
-\t\t} else {
-\t\t\treturn jsonConvert.convert<M>(json);
-\t\t}
-\t}
+  static M? fromJsonAsT<M>(dynamic json) {
+    if (json is M) {
+      return json;
+    }
+    if (json is List) {
+      return _getListChildType<M>(json.map((dynamic e) => e as Map<String, dynamic>).toList());
+    } else {
+      return jsonConvert.convert<M>(json);
+    }
+  }
 }
 
-\tclass JsonConvertClassCollection {
-\tMap<String, JsonConvertFunction> convertFuncMap = {
+class JsonConvertClassCollection {
+  Map<String, JsonConvertFunction> convertFuncMap = {
 ${classEntries.join('\n')}
-\t};
-\t
-bool containsKey(String type) {
-return convertFuncMap.containsKey(type);
-}
-JsonConvertFunction? operator [](String key) {
-return convertFuncMap[key];
-}
-\t}`;
+  };
+
+  bool containsKey(String type) {
+    return convertFuncMap.containsKey(type);
+  }
+
+  JsonConvertFunction? operator [](String key) {
+    return convertFuncMap[key];
+  }
+}`;
     }
 
     private toSnakeCase(str: string): string {

@@ -55,7 +55,7 @@
     ],
     "keybindings": [
       {
-        "command": "flutter-json-bean-factory.generateFromJson",
+        "command": "flutter-json-bean-factory.regenerateAllBeans",
         "key": "alt+j",
         "mac": "alt+j",
         "when": "editorTextFocus && resourceExtname == .dart"
