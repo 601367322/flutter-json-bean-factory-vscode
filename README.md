@@ -1,5 +1,6 @@
 # Flutter JSON Bean Factory
 
+[![GitHub](https://img.shields.io/github/stars/bingshushu/flutter-json-bean-factory-vscode)](https://github.com/bingshushu/flutter-json-bean-factory-vscode)
 [![Version](https://img.shields.io/visual-studio-marketplace/v/bingshushu.flutter-json-bean-factory)](https://marketplace.visualstudio.com/items?itemName=bingshushu.flutter-json-bean-factory)
 [![Downloads](https://img.shields.io/visual-studio-marketplace/d/bingshushu.flutter-json-bean-factory)](https://marketplace.visualstudio.com/items?itemName=bingshushu.flutter-json-bean-factory)
 [![Rating](https://img.shields.io/visual-studio-marketplace/r/bingshushu.flutter-json-bean-factory)](https://marketplace.visualstudio.com/items?itemName=bingshushu.flutter-json-bean-factory)
@@ -297,7 +298,8 @@ MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 🔗 Links
 
+- [GitHub Repository](https://github.com/bingshushu/flutter-json-bean-factory-vscode) - Source code and development
 - [VSCode Marketplace](https://marketplace.visualstudio.com/items?itemName=bingshushu.flutter-json-bean-factory)
 - [Original IntelliJ Plugin](https://github.com/fluttercandies/FlutterJsonBeanFactory)
 - [FlutterCandies Organization](https://github.com/fluttercandies)
-- [Report Issues](https://github.com/your-username/flutter-json-bean-factory-vscode/issues)
+- [Report Issues](https://github.com/bingshushu/flutter-json-bean-factory-vscode/issues)
