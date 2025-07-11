@@ -105,7 +105,6 @@ export class DartCodeGenerator {
                 allFunctions.push(toJsonFunction);
                 allFunctions.push('');
                 allFunctions.push(copyWithExtension);
-                allFunctions.push('');
             }
         }
 
@@ -542,10 +541,17 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
                 if (prop.isNestedObject && prop.arrayElementType) {
                     // 对于嵌套对象数组，使用简洁的类名（单文件模式）
                     const simpleElementType = this.getNestedClassName(prop.arrayElementType);
-                    parts.push(`\tfinal List<${simpleElementType}>${typeNullString} ${varName} = (json['${jsonKey}'] as List<dynamic>?)?.map((e) => jsonConvert.convert<${simpleElementType}>(e) as ${simpleElementType}).toList();`);
+                    parts.push(`\tfinal List<${simpleElementType}>${typeNullString} ${varName} = (json['${jsonKey}'] as List<dynamic>?)?.map(
+                      (e) => jsonConvert.convert<${simpleElementType}>(e) as ${simpleElementType}).toList();`);
                 } else {
                     // 对于基础类型数组
-                    parts.push(`\tfinal List<${prop.arrayElementType}>${typeNullString} ${varName} = jsonConvert.convert<List<${prop.arrayElementType}>>(json['${jsonKey}']);`);
+                    if (prop.arrayElementType === 'dynamic') {
+                        // 对于List<dynamic>，使用原插件的特殊处理方式
+                        parts.push(`\tfinal List<${prop.arrayElementType}>${typeNullString} ${varName} = (json['${jsonKey}'] as List<dynamic>?)?.map(
+                          (e) => e).toList();`);
+                    } else {
+                        parts.push(`\tfinal List<${prop.arrayElementType}>${typeNullString} ${varName} = jsonConvert.convert<List<${prop.arrayElementType}>>(json['${jsonKey}']);`);
+                    }
                 }
             } else if (prop.isNestedObject && prop.nestedClass) {
                 const simpleType = this.getNestedClassName(prop.dartType);
@@ -559,22 +565,18 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
                 }
             }
 
-            // 对于dynamic类型，不需要null检查（原版风格）
-            if (prop.dartType === 'dynamic') {
-                parts.push(`\t${instanceName}.${fieldName} = ${varName};`);
+            // 所有类型都需要null检查（包括dynamic类型，原版风格）
+            const isOpenNullable = (this.config as any).isOpenNullable;
+            if (isOpenNullable) {
+                // 当开启nullable选项时，仍然需要null检查，但字段本身是nullable的
+                parts.push(`\tif (${varName} != null) {`);
+                parts.push(`\t\t${instanceName}.${fieldName} = ${varName};`);
+                parts.push(`\t}`);
             } else {
-                const isOpenNullable = (this.config as any).isOpenNullable;
-                if (isOpenNullable) {
-                    // 当开启nullable选项时，仍然需要null检查，但字段本身是nullable的
-                    parts.push(`\tif (${varName} != null) {`);
-                    parts.push(`\t\t${instanceName}.${fieldName} = ${varName};`);
-                    parts.push(`\t}`);
-                } else {
-                    // 原来的逻辑
-                    parts.push(`\tif (${varName} != null) {`);
-                    parts.push(`\t\t${instanceName}.${fieldName} = ${varName};`);
-                    parts.push(`\t}`);
-                }
+                // 原来的逻辑：所有类型都需要null检查（包括dynamic）
+                parts.push(`\tif (${varName} != null) {`);
+                parts.push(`\t\t${instanceName}.${fieldName} = ${varName};`);
+                parts.push(`\t}`);
             }
         }
 

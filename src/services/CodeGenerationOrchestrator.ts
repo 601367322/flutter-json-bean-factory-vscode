@@ -213,11 +213,16 @@ export class CodeGenerationOrchestrator {
         content.push('');
 
         // Generate helper functions for each class (like original plugin)
-        for (const dartClass of entityFile.classes) {
+        for (let i = 0; i < entityFile.classes.length; i++) {
+            const dartClass = entityFile.classes[i];
             const jsonClass = this.convertDartClassToJsonClass(dartClass);
             const helperFunctions = this.generateHelperFunctionsForClass(jsonClass);
             content.push(helperFunctions);
-            content.push('');
+
+            // 只在不是最后一个类时添加空行
+            if (i < entityFile.classes.length - 1) {
+                content.push('');
+            }
         }
 
         return content.join('\n');
