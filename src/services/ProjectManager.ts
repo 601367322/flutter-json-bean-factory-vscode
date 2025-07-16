@@ -239,6 +239,44 @@ export class ProjectManager {
     }
 
     /**
+     * Delete ALL auto-generated files to ensure clean regeneration
+     * This addresses the issue where removed properties don't get updated in generated files
+     */
+    async deleteAllGeneratedFiles(generatedDir: string): Promise<void> {
+        try {
+            if (!fs.existsSync(generatedDir)) {
+                return;
+            }
+
+            const files = fs.readdirSync(generatedDir);
+
+            // Delete all .g.dart files
+            for (const file of files) {
+                if (file.endsWith('.g.dart')) {
+                    const filePath = path.join(generatedDir, file);
+                    fs.unlinkSync(filePath);
+                    console.log(`Deleted generated file: ${file}`);
+                }
+            }
+
+            // Also delete and recreate base directory contents
+            const baseDir = path.join(generatedDir, 'base');
+            if (fs.existsSync(baseDir)) {
+                const baseFiles = fs.readdirSync(baseDir);
+                for (const file of baseFiles) {
+                    if (file === 'json_convert_content.dart') {
+                        const filePath = path.join(baseDir, file);
+                        fs.unlinkSync(filePath);
+                        console.log(`Deleted base file: ${file}`);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('Error deleting all generated files:', error);
+        }
+    }
+
+    /**
      * Convert string to snake_case
      */
     toSnakeCase(str: string): string {

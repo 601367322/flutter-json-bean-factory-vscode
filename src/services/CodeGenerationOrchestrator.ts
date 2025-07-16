@@ -85,12 +85,8 @@ export class CodeGenerationOrchestrator {
         this.projectManager.ensureDirectoryExists(generatedDir);
         this.projectManager.ensureDirectoryExists(path.join(generatedDir, 'base'));
 
-        // Step 3: Clean up old helper files (like original plugin)
-        const expectedHelperFiles = allEntityFiles.map(entityFile => {
-            const baseName = path.basename(entityFile.filePath, '.dart');
-            return `${baseName}.g.dart`;
-        });
-        await this.projectManager.cleanupOldHelperFiles(generatedDir, expectedHelperFiles);
+        // Step 3: Delete ALL auto-generated files first (like user's memory preference)
+        await this.projectManager.deleteAllGeneratedFiles(generatedDir);
 
         // Step 4: Generate all helper files (like original plugin's generateAllDartEntityHelper)
         await this.generateAllDartEntityHelper(generatedDir, allEntityFiles);
