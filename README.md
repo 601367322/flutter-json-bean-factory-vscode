@@ -20,6 +20,8 @@ A powerful VSCode extension that automatically generates Dart model classes from
 - 🔧 **Flexible file organization** - Configurable output paths
 - 🎨 **Rich UI dialog** - User-friendly JSON input interface
 
+> 📋 **Latest Updates**: Check out [What's New](#-whats-new) for recent features and improvements, or view the complete [CHANGELOG.md](CHANGELOG.md) for detailed version history.
+
 ## 🚀 Quick Start
 
 ### Installation
@@ -240,37 +242,6 @@ Use `@JSONField` annotations for custom field mapping:
 - Preserves existing customizations in entity files
 - Updates only the `.g.dart` files
 
-## 🐛 Troubleshooting
-
-### Common Issues
-
-1. **"This command only works in Flutter projects"**
-   - Ensure your project has a `pubspec.yaml` file
-   - Open the project root folder in VSCode
-
-2. **Generated files not found**
-   - Check your configuration paths
-   - Ensure the target directories exist
-
-3. **Build errors after generation**
-   - Run `flutter packages pub run build_runner build`
-   - Add required dependencies to `pubspec.yaml`
-
-### Build Runner Commands
-
-After generating models, run:
-
-```bash
-# Generate .g.dart files
-flutter packages pub run build_runner build
-
-# Watch for changes
-flutter packages pub run build_runner watch
-
-# Clean and rebuild
-flutter packages pub run build_runner build --delete-conflicting-outputs
-```
-
 ## 🙏 Acknowledgments
 
 This project is based on the excellent [FlutterJsonBeanFactory](https://github.com/fluttercandies/FlutterJsonBeanFactory) IntelliJ plugin by the [FlutterCandies](https://github.com/fluttercandies) team. We are grateful for their innovative work and open-source contribution to the Flutter community.
@@ -296,6 +267,13 @@ This serves as an example of AI-driven software development and the potential fo
 
 MIT License - see the [LICENSE](LICENSE) file for details.
 
+## 📋 What's New
+
+### Version 1.0.6
+- 📝 Enhanced nullable option handling
+
+For detailed version history, see [CHANGELOG.md](CHANGELOG.md).
+
 ## 🔗 Links
 
 - [GitHub Repository](https://github.com/bingshushu/flutter-json-bean-factory-vscode) - Source code and development
@@ -303,3 +281,4 @@ MIT License - see the [LICENSE](LICENSE) file for details.
 - [Original IntelliJ Plugin](https://github.com/fluttercandies/FlutterJsonBeanFactory)
 - [FlutterCandies Organization](https://github.com/fluttercandies)
 - [Report Issues](https://github.com/bingshushu/flutter-json-bean-factory-vscode/issues)
+- [Changelog](CHANGELOG.md) - Version history and updates
