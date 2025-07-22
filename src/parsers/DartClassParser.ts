@@ -150,9 +150,9 @@ export class DartClassParser {
                 isNestedObject = !this.isPrimitiveType(prop.type);
             }
 
-            // For late fields, they are treated as nullable in fromJson but non-nullable in toJson
-            // For toJson generation, late fields should be treated as non-nullable
-            const isNullableForToJson = prop.isNullable && !prop.isLate;
+            // For toJson generation, fields should be treated as nullable if they are explicitly nullable
+            // Even late fields can be nullable (late Type?) and should use safe call operator in toJson
+            const isNullableForToJson = prop.isNullable;
 
             return {
                 name: prop.name,

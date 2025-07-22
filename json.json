@@ -1,0 +1,416 @@
+{
+    "timestamp": 0,
+    "status": 0,
+    "message": "string",
+    "meta": {},
+    "content": {
+        "moment": {
+            "id": "string",
+            "content": "string",
+            "medias": [
+                {
+                    "type": "string",
+                    "image": {
+                        "id": "string",
+                        "mimeType": "string",
+                        "small": {
+                            "url": "string",
+                            "width": 0,
+                            "height": 0,
+                            "size": 0
+                        },
+                        "medium": {
+                            "url": "string",
+                            "width": 0,
+                            "height": 0,
+                            "size": 0
+                        },
+                        "large": {
+                            "url": "string",
+                            "width": 0,
+                            "height": 0,
+                            "size": 0
+                        }
+                    }
+                }
+            ],
+            "mediaAttached": true,
+            "topics": [
+                {
+                    "id": "string",
+                    "name": "string",
+                    "description": "string",
+                    "viewCount": 0,
+                    "participationCount": 0
+                }
+            ],
+            "visibleRange": "string",
+            "commentCount": 0,
+            "replyCount": 0,
+            "likeCount": 0,
+            "deleted": true,
+            "updatedTime": "string",
+            "publishedTime": "string",
+            "user": {
+                "id": "string",
+                "displayName": "string",
+                "gender": "string",
+                "maritalStatus": {
+                    "status": "string",
+                    "name": "string"
+                },
+                "profileImageUrl": "string",
+                "birthDate": "string",
+                "zodiac": {
+                    "id": "string",
+                    "name": "string"
+                },
+                "mbti": "string",
+                "nationFrom": {
+                    "id": "string",
+                    "name": "string"
+                },
+                "areaFrom": {
+                    "id": "string",
+                    "parentId": null,
+                    "level": 0,
+                    "name": "string"
+                },
+                "subAreaFrom": {
+                    "id": "string",
+                    "parentId": "string",
+                    "level": 0,
+                    "name": "string"
+                },
+                "areaReside": {
+                    "id": "string",
+                    "parentId": null,
+                    "level": 0,
+                    "name": "string"
+                },
+                "subAreaReside": {
+                    "id": "string",
+                    "parentId": "string",
+                    "level": 0,
+                    "name": "string"
+                },
+                "chineseKorean": true,
+                "nationality": {
+                    "id": "string",
+                    "name": "string"
+                },
+                "height": 0,
+                "weight": 0,
+                "educationLevel": {
+                    "id": "string",
+                    "name": "string"
+                },
+                "job": {
+                    "id": "string",
+                    "name": "string"
+                },
+                "jobCustomized": null,
+                "identityVerifyStatus": "string",
+                "educationVerifyStatus": "string",
+                "jobVerifyStatus": "string"
+            },
+            "currentUserId": "string",
+            "liked": true,
+            "commented": true
+        },
+        "participants": [
+            {
+                "momentId": "string",
+                "user": {
+                    "id": "string",
+                    "displayName": "string",
+                    "gender": "string",
+                    "maritalStatus": {
+                        "status": "string",
+                        "name": "string"
+                    },
+                    "profileImageUrl": "string",
+                    "birthDate": "string",
+                    "zodiac": {
+                        "id": "string",
+                        "name": "string"
+                    },
+                    "mbti": "string",
+                    "nationFrom": {
+                        "id": "string",
+                        "name": "string"
+                    },
+                    "areaFrom": {
+                        "id": "string",
+                        "parentId": null,
+                        "level": 0,
+                        "name": "string"
+                    },
+                    "subAreaFrom": {
+                        "id": "string",
+                        "parentId": "string",
+                        "level": 0,
+                        "name": "string"
+                    },
+                    "areaReside": {
+                        "id": "string",
+                        "parentId": null,
+                        "level": 0,
+                        "name": "string"
+                    },
+                    "subAreaReside": {
+                        "id": "string",
+                        "parentId": "string",
+                        "level": 0,
+                        "name": "string"
+                    },
+                    "chineseKorean": true,
+                    "nationality": {
+                        "id": "string",
+                        "name": "string"
+                    },
+                    "height": 0,
+                    "weight": 0,
+                    "educationLevel": {
+                        "id": "string",
+                        "name": "string"
+                    },
+                    "job": {
+                        "id": "string",
+                        "name": "string"
+                    },
+                    "jobCustomized": null,
+                    "identityVerifyStatus": "string",
+                    "educationVerifyStatus": "string",
+                    "jobVerifyStatus": "string"
+                },
+                "actionTypes": [
+                    "string"
+                ]
+            }
+        ],
+        "comments": {
+            "list": [
+                {
+                    "id": "string",
+                    "momentId": "string",
+                    "content": "string",
+                    "likeCount": 0,
+                    "replyCount": 0,
+                    "deleted": true,
+                    "publishedTime": "string",
+                    "user": {
+                        "id": "string",
+                        "displayName": "string",
+                        "gender": "string",
+                        "maritalStatus": {
+                            "status": "string",
+                            "name": "string"
+                        },
+                        "profileImageUrl": "string",
+                        "birthDate": "string",
+                        "zodiac": {
+                            "id": "string",
+                            "name": "string"
+                        },
+                        "mbti": "string",
+                        "nationFrom": {
+                            "id": "string",
+                            "name": "string"
+                        },
+                        "areaFrom": {
+                            "id": "string",
+                            "parentId": null,
+                            "level": 0,
+                            "name": "string"
+                        },
+                        "subAreaFrom": {
+                            "id": "string",
+                            "parentId": "string",
+                            "level": 0,
+                            "name": "string"
+                        },
+                        "areaReside": {
+                            "id": "string",
+                            "parentId": null,
+                            "level": 0,
+                            "name": "string"
+                        },
+                        "subAreaReside": {
+                            "id": "string",
+                            "parentId": "string",
+                            "level": 0,
+                            "name": "string"
+                        },
+                        "chineseKorean": true,
+                        "nationality": {
+                            "id": "string",
+                            "name": "string"
+                        },
+                        "height": 0,
+                        "weight": 0,
+                        "educationLevel": {
+                            "id": "string",
+                            "name": "string"
+                        },
+                        "job": {
+                            "id": "string",
+                            "name": "string"
+                        },
+                        "jobCustomized": null,
+                        "identityVerifyStatus": "string",
+                        "educationVerifyStatus": "string",
+                        "jobVerifyStatus": "string"
+                    },
+                    "currentUserId": "string",
+                    "liked": true,
+                    "replies": [
+                        {
+                            "id": "string",
+                            "commentId": "string",
+                            "content": "string",
+                            "likeCount": 0,
+                            "referCount": 0,
+                            "deleted": true,
+                            "publishedTime": "string",
+                            "user": {
+                                "id": "string",
+                                "displayName": "string",
+                                "gender": "string",
+                                "maritalStatus": {
+                                    "status": "string",
+                                    "name": "string"
+                                },
+                                "profileImageUrl": "string",
+                                "birthDate": "string",
+                                "zodiac": {
+                                    "id": "string",
+                                    "name": "string"
+                                },
+                                "mbti": "string",
+                                "nationFrom": {
+                                    "id": "string",
+                                    "name": "string"
+                                },
+                                "areaFrom": {
+                                    "id": "string",
+                                    "parentId": null,
+                                    "level": 0,
+                                    "name": "string"
+                                },
+                                "subAreaFrom": {
+                                    "id": "string",
+                                    "parentId": "string",
+                                    "level": 0,
+                                    "name": "string"
+                                },
+                                "areaReside": {
+                                    "id": "string",
+                                    "parentId": null,
+                                    "level": 0,
+                                    "name": "string"
+                                },
+                                "subAreaReside": {
+                                    "id": "string",
+                                    "parentId": "string",
+                                    "level": 0,
+                                    "name": "string"
+                                },
+                                "chineseKorean": true,
+                                "nationality": {
+                                    "id": "string",
+                                    "name": "string"
+                                },
+                                "height": 0,
+                                "weight": 0,
+                                "educationLevel": {
+                                    "id": "string",
+                                    "name": "string"
+                                },
+                                "job": {
+                                    "id": "string",
+                                    "name": "string"
+                                },
+                                "jobCustomized": null,
+                                "identityVerifyStatus": "string",
+                                "educationVerifyStatus": "string",
+                                "jobVerifyStatus": "string"
+                            },
+                            "referId": "string",
+                            "referUser": {
+                                "id": "string",
+                                "displayName": "string",
+                                "gender": "string",
+                                "maritalStatus": {
+                                    "status": "string",
+                                    "name": "string"
+                                },
+                                "profileImageUrl": "string",
+                                "birthDate": "string",
+                                "zodiac": {
+                                    "id": "string",
+                                    "name": "string"
+                                },
+                                "mbti": "string",
+                                "nationFrom": {
+                                    "id": "string",
+                                    "name": "string"
+                                },
+                                "areaFrom": {
+                                    "id": "string",
+                                    "parentId": null,
+                                    "level": 0,
+                                    "name": "string"
+                                },
+                                "subAreaFrom": {
+                                    "id": "string",
+                                    "parentId": "string",
+                                    "level": 0,
+                                    "name": "string"
+                                },
+                                "areaReside": {
+                                    "id": "string",
+                                    "parentId": null,
+                                    "level": 0,
+                                    "name": "string"
+                                },
+                                "subAreaReside": {
+                                    "id": "string",
+                                    "parentId": "string",
+                                    "level": 0,
+                                    "name": "string"
+                                },
+                                "chineseKorean": true,
+                                "nationality": {
+                                    "id": "string",
+                                    "name": "string"
+                                },
+                                "height": 0,
+                                "weight": 0,
+                                "educationLevel": {
+                                    "id": "string",
+                                    "name": "string"
+                                },
+                                "job": {
+                                    "id": "string",
+                                    "name": "string"
+                                },
+                                "jobCustomized": null,
+                                "identityVerifyStatus": "string",
+                                "educationVerifyStatus": "string",
+                                "jobVerifyStatus": "string"
+                            },
+                            "currentUserId": "string",
+                            "liked": true
+                        }
+                    ]
+                }
+            ],
+            "cursor": {
+                "pageSize": 0,
+                "nextCursor": "string",
+                "hasMore": true
+            }
+        }
+    }
+}

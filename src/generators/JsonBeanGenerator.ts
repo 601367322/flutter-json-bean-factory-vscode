@@ -39,8 +39,8 @@ export class JsonBeanGenerator {
             // Update generator config with dialog settings
             this.orchestrator.updateGeneratorConfig(result.settings);
 
-            // Parse JSON and generate classes
-            const rootClass = this.jsonParser.parseJson(result.jsonString, result.className);
+            // Parse JSON and generate classes with config
+            const rootClass = this.jsonParser.parseJson(result.jsonString, result.className, result.settings);
             const allClasses = this.jsonParser.getAllClasses(rootClass);
 
             // Generate and save files

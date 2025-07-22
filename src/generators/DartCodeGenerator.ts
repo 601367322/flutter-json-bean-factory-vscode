@@ -89,22 +89,32 @@ export class DartCodeGenerator {
         const allFunctions: string[] = [];
         const processedClasses = new Set<string>();
 
+        // 先收集所有需要处理的类
+        const classesToProcess = [];
         for (const cls of allClasses) {
             const clsName = cls === jsonClass ? className : this.getNestedClassName(cls.name);
-
-            // 避免重复生成相同类名的函数
             if (!processedClasses.has(clsName)) {
                 processedClasses.add(clsName);
+                classesToProcess.push({ cls, clsName });
+            }
+        }
 
-                const fromJsonFunction = this.generateFromJsonFunction(clsName, cls.properties);
-                const toJsonFunction = this.generateToJsonFunction(clsName, cls.properties);
-                const copyWithExtension = this.generateCopyWithExtension(clsName, cls.properties);
+        for (let i = 0; i < classesToProcess.length; i++) {
+            const { cls, clsName } = classesToProcess[i];
 
-                allFunctions.push(fromJsonFunction);
+            const fromJsonFunction = this.generateFromJsonFunction(clsName, cls.properties);
+            const toJsonFunction = this.generateToJsonFunction(clsName, cls.properties);
+            const copyWithExtension = this.generateCopyWithExtension(clsName, cls.properties);
+
+            allFunctions.push(fromJsonFunction);
+            allFunctions.push('');
+            allFunctions.push(toJsonFunction);
+            allFunctions.push('');
+            allFunctions.push(copyWithExtension);
+
+            // 只在不是最后一个类时添加空行
+            if (i < classesToProcess.length - 1) {
                 allFunctions.push('');
-                allFunctions.push(toJsonFunction);
-                allFunctions.push('');
-                allFunctions.push(copyWithExtension);
             }
         }
 
@@ -443,8 +453,14 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
             const setDefault = (this.config as any).setDefault;
 
             if (prop.isNestedObject && !prop.isArray) {
-                // 对象字段使用late关键字（原版风格）
-                parts.push(`\t${fieldType.includes('late ') ? '' : 'late '}${fieldType} ${fieldName};`);
+                // 对象字段的处理：如果是nullable则不使用late，否则使用late关键字
+                if (isOpenNullable && prop.dartType !== 'dynamic') {
+                    // 如果开启了nullable选项，嵌套对象字段不使用late关键字
+                    parts.push(`\t${fieldType} ${fieldName};`);
+                } else {
+                    // 否则使用late关键字（原版风格）
+                    parts.push(`\t${fieldType.includes('late ') ? '' : 'late '}${fieldType} ${fieldName};`);
+                }
             } else if (prop.dartType === 'dynamic') {
                 // dynamic字段不设置默认值（原版风格）
                 parts.push(`\t${fieldType} ${fieldName};`);
@@ -599,7 +615,8 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
 
             if (prop.isArray && prop.isNestedObject) {
                 // 对于数组字段，根据toJson可空性决定使用 .map() 还是 ?.map()
-                const isNullableForToJson = (prop as any).isNullableForToJson ?? prop.isNullable;
+                const isOpenNullable = (this.config as any).isOpenNullable;
+                const isNullableForToJson = (prop as any).isNullableForToJson ?? (isOpenNullable ? true : prop.isNullable);
                 if (isNullableForToJson) {
                     parts.push(`\tdata['${jsonKey}'] = entity.${fieldName}?.map((v) => v.toJson()).toList();`);
                 } else {
@@ -607,7 +624,8 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
                 }
             } else if (prop.isNestedObject) {
                 // 对于嵌套对象，根据toJson可空性决定使用 .toJson() 还是 ?.toJson()
-                const isNullableForToJson = (prop as any).isNullableForToJson ?? prop.isNullable;
+                const isOpenNullable = (this.config as any).isOpenNullable;
+                const isNullableForToJson = (prop as any).isNullableForToJson ?? (isOpenNullable ? true : prop.isNullable);
                 const toJsonOperator = isNullableForToJson ? '?.toJson()' : '.toJson()';
                 parts.push(`\tdata['${jsonKey}'] = entity.${fieldName}${toJsonOperator};`);
             } else {

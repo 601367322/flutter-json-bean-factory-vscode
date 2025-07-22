@@ -9,6 +9,7 @@ export interface JsonProperty {
     nestedClass?: JsonClass;
     arrayElementType?: string;
     originalValue?: any;
+    isNullableForToJson?: boolean;  // 用于toJson方法的nullable标记
 }
 
 export interface JsonClass {
@@ -20,13 +21,15 @@ export interface JsonClass {
 export class JsonParser {
     private classCounter = 0;
     private processedClasses = new Map<string, JsonClass>();
+    private config: any = {};
 
     /**
      * Parse JSON string and generate class structure
      */
-    parseJson(jsonString: string, className: string): JsonClass {
+    parseJson(jsonString: string, className: string, config?: any): JsonClass {
         this.classCounter = 0;
         this.processedClasses.clear();
+        this.config = config || {};
 
         try {
             const jsonObject = JSON.parse(jsonString);
@@ -78,6 +81,11 @@ export class JsonParser {
         let dartType = this.mapToDartType(type, value);
         let isNullable = value === null;
         let isArray = Array.isArray(value);
+
+        // 如果配置中开启了nullable选项，且不是dynamic类型，则标记为nullable
+        if (this.config.isOpenNullable && dartType !== 'dynamic') {
+            isNullable = true;
+        }
         let isNestedObject = false;
         let nestedClass: JsonClass | undefined;
         let arrayElementType: string | undefined;
@@ -113,7 +121,8 @@ export class JsonParser {
             isNestedObject,
             nestedClass,
             arrayElementType,
-            originalValue: value
+            originalValue: value,
+            isNullableForToJson: isNullable  // 对于从JSON解析的属性，toJson的nullable性与原始nullable性相同
         };
     }
 
