@@ -85,6 +85,20 @@ export class DartCodeGenerator {
         const allClasses = this.collectAllClasses(jsonClass);
         const imports = this.generateHelperImports(className, allClasses, entityImportPath);
 
+        // 使用统一的内容生成逻辑
+        const content = this.generateHelperFileContent(className, allClasses);
+
+        return [
+            imports,
+            '',
+            content
+        ].join('\n');
+    }
+
+    /**
+     * Generate helper file content without imports (for unified logic)
+     */
+    generateHelperFileContent(className: string, allClasses: JsonClass[]): string {
         // 生成所有类的函数（原版风格）
         const allFunctions: string[] = [];
         const processedClasses = new Set<string>();
@@ -92,7 +106,7 @@ export class DartCodeGenerator {
         // 先收集所有需要处理的类
         const classesToProcess = [];
         for (const cls of allClasses) {
-            const clsName = cls === jsonClass ? className : this.getNestedClassName(cls.name);
+            const clsName = cls.name === className ? className : this.getNestedClassName(cls.name);
             if (!processedClasses.has(clsName)) {
                 processedClasses.add(clsName);
                 classesToProcess.push({ cls, clsName });
@@ -118,11 +132,7 @@ export class DartCodeGenerator {
             }
         }
 
-        return [
-            imports,
-            '',
-            allFunctions.join('\n')
-        ].join('\n');
+        return allFunctions.join('\n');
     }
 
     /**

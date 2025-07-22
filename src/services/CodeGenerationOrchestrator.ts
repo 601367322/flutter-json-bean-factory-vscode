@@ -226,23 +226,12 @@ export class CodeGenerationOrchestrator {
 
     /**
      * Generate helper functions for a single class (fromJson, toJson, copyWith)
+     * 使用统一的生成逻辑，确保与generateHelperFile()格式一致
      */
     private generateHelperFunctionsForClass(jsonClass: JsonClass): string {
-        const className = jsonClass.name;
-        const functions: string[] = [];
-
-        // Generate fromJson function
-        functions.push(this.codeGenerator.generateFromJsonFunction(className, jsonClass.properties));
-        functions.push('');
-
-        // Generate toJson function
-        functions.push(this.codeGenerator.generateToJsonFunction(className, jsonClass.properties));
-        functions.push('');
-
-        // Generate copyWith extension
-        functions.push(this.codeGenerator.generateCopyWithExtension(className, jsonClass.properties));
-
-        return functions.join('\n');
+        // 使用DartCodeGenerator的统一逻辑，但只处理单个类
+        const allClasses = [jsonClass]; // 只包含当前类
+        return this.codeGenerator.generateHelperFileContent(jsonClass.name, allClasses);
     }
 
     /**
