@@ -2,7 +2,7 @@
   "name": "flutter-json-bean-factory",
   "displayName": "Flutter JSON Bean Factory",
   "description": "Generate Dart beans from JSON with fromJson/toJson methods for Flutter development",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "publisher": "bingshushu",
   "icon": "images/icon.png",
   "repository": {
