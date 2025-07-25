@@ -479,15 +479,21 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
                 const correctedDefaultValue = prop.isArray ? '[]' : defaultValue;
 
                 if (isOpenNullable && prop.dartType !== 'dynamic') {
-                    // 如果是nullable字段，不设置默认值（原版风格）
-                    parts.push(`\t${fieldType} ${fieldName};`);
-                } else if (setDefault) {
-                    // 如果选择了默认值，设置默认值
-                    parts.push(`\t${fieldType} ${fieldName} = ${correctedDefaultValue};`);
-                } else {
-                    // 如果既不选择默认值，也不选择nullable，使用late关键字
-                    parts.push(`\tlate ${fieldType} ${fieldName};`);
-                }
+                  // 如果开启了nullable选项
+                  if (setDefault) {
+                      // 如果同时选择了默认值，生成 int? abc = 0;
+                      parts.push(`\t${fieldType} ${fieldName} = ${correctedDefaultValue};`);
+                  } else {
+                      // 如果没有选择默认值，生成 int? abc;
+                      parts.push(`\t${fieldType} ${fieldName};`);
+                  }
+              } else if (setDefault) {
+                  // 如果选择了默认值，设置默认值
+                  parts.push(`\t${fieldType} ${fieldName} = ${correctedDefaultValue};`);
+              } else {
+                  // 如果既不选择默认值，也不选择nullable，使用late关键字
+                  parts.push(`\tlate ${fieldType} ${fieldName};`);
+              }
             }
         }
 
@@ -884,7 +890,7 @@ class JsonConvert {
       convertFuncMap = JsonConvertClassCollection();
     }
   }
-\t
+
   T? convert<T>(dynamic value, {EnumConvertFunction? enumConvert}) {
     if (value == null) {
       return null;
