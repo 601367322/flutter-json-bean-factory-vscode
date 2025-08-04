@@ -268,6 +268,9 @@ export class CodeGenerationOrchestrator {
         }
 
         // Apply default values if setDefault is enabled
+        if (settings.setDefault !== undefined) {
+            (config as any).setDefault = settings.setDefault;
+        }
         if (settings.setDefault) {
             // Store default values for use in code generation
             (config as any).stringDefaultValue = settings.stringDefaultValue || "''";

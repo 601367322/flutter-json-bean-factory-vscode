@@ -479,15 +479,21 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
                 const correctedDefaultValue = prop.isArray ? '[]' : defaultValue;
 
                 if (isOpenNullable && prop.dartType !== 'dynamic') {
-                    // 如果是nullable字段，不设置默认值（原版风格）
-                    parts.push(`  ${fieldType} ${fieldName};`);
-                } else if (setDefault) {
-                    // 如果选择了默认值，设置默认值
-                    parts.push(`  ${fieldType} ${fieldName} = ${correctedDefaultValue};`);
-                } else {
-                    // 如果既不选择默认值，也不选择nullable，使用late关键字
-                    parts.push(`  late ${fieldType} ${fieldName};`);
-                }
+                  // 如果开启了nullable选项
+                  if (setDefault) {
+                      // 如果同时选择了默认值，生成 int? abc = 0;
+                      parts.push(`  ${fieldType} ${fieldName} = ${correctedDefaultValue};`);
+                  } else {
+                      // 如果没有选择默认值，生成 int? abc;
+                      parts.push(`  ${fieldType} ${fieldName};`);
+                  }
+              } else if (setDefault) {
+                  // 如果选择了默认值，设置默认值
+                  parts.push(`  ${fieldType} ${fieldName} = ${correctedDefaultValue};`);
+              } else {
+                  // 如果既不选择默认值，也不选择nullable，使用late关键字
+                  parts.push(`  late ${fieldType} ${fieldName};`);
+              }
             }
         }
 
@@ -560,7 +566,7 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
             if (prop.isGetter || prop.deserialize === false) {
                 continue;
             }
-            
+
             const jsonKey = prop.originalJsonKey; // 原始JSON key
             const fieldName = prop.name; // 实际的字段名（如 groupId, userId）
             const varName = this.toCamelCase(prop.originalJsonKey); // 临时变量名
@@ -634,7 +640,7 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
             if (prop.isGetter || prop.serialize === false) {
                 continue;
             }
-            
+
             const jsonKey = prop.originalJsonKey; // 原始JSON key
             const fieldName = prop.name; // 实际的字段名（如 groupId, userId）
 
@@ -917,7 +923,7 @@ class JsonConvert {
       convertFuncMap = JsonConvertClassCollection();
     }
   }
-  
+
   T? convert<T>(dynamic value, {EnumConvertFunction? enumConvert}) {
     if (value == null) {
       return null;

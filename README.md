@@ -269,6 +269,9 @@ MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## 📋 What's New
 
+### Version 1.0.7
+- 修复默认值不生效的问题
+
 ### Version 1.0.6
 - 📝 Enhanced nullable option handling
 
