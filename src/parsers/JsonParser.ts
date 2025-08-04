@@ -10,6 +10,10 @@ export interface JsonProperty {
     arrayElementType?: string;
     originalValue?: any;
     isNullableForToJson?: boolean;  // 用于toJson方法的nullable标记
+    isGetter?: boolean;  // 是否是getter方法
+    serialize?: boolean;  // @JSONField serialize参数
+    deserialize?: boolean;  // @JSONField deserialize参数
+    isEnum?: boolean;  // @JSONField isEnum参数
 }
 
 export interface JsonClass {

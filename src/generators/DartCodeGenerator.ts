@@ -556,6 +556,11 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
         parts.push(`\tfinal ${className} ${instanceName} = ${className}();`);
 
         for (const prop of properties) {
+            // Skip getters and fields marked with deserialize: false
+            if (prop.isGetter || prop.deserialize === false) {
+                continue;
+            }
+            
             const jsonKey = prop.originalJsonKey; // 原始JSON key
             const fieldName = prop.name; // 实际的字段名（如 groupId, userId）
             const varName = this.toCamelCase(prop.originalJsonKey); // 临时变量名
@@ -582,6 +587,10 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
             } else if (prop.isNestedObject && prop.nestedClass) {
                 const simpleType = this.getNestedClassName(prop.dartType);
                 parts.push(`\tfinal ${simpleType}${typeNullString} ${varName} = jsonConvert.convert<${simpleType}>(json['${jsonKey}']);`);
+            } else if (prop.isEnum) {
+                // Handle enum types with enumConvert parameter
+                parts.push(`\tfinal ${prop.dartType}${typeNullString} ${varName} = jsonConvert.convert<${prop.dartType}>(
+      json['${jsonKey}'], enumConvert: (v) => ${prop.dartType}.values.byName(v));`);
             } else {
                 // 对于dynamic类型，直接从JSON获取值，不使用jsonConvert.convert
                 if (prop.dartType === 'dynamic') {
@@ -620,6 +629,12 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
         parts.push('\tfinal Map<String, dynamic> data = <String, dynamic>{};');
 
         for (const prop of properties) {
+            // Skip getters and fields marked with serialize: false
+            // Note: deserialize: false fields SHOULD appear in toJson
+            if (prop.isGetter || prop.serialize === false) {
+                continue;
+            }
+            
             const jsonKey = prop.originalJsonKey; // 原始JSON key
             const fieldName = prop.name; // 实际的字段名（如 groupId, userId）
 
@@ -632,12 +647,27 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
                 } else {
                     parts.push(`\tdata['${jsonKey}'] = entity.${fieldName}.map((v) => v.toJson()).toList();`);
                 }
+            } else if (prop.isArray && prop.isEnum) {
+                // Handle enum arrays - use .name for each element
+                const isOpenNullable = (this.config as any).isOpenNullable;
+                const isNullableForToJson = (prop as any).isNullableForToJson ?? (isOpenNullable ? true : prop.isNullable);
+                if (isNullableForToJson) {
+                    parts.push(`\tdata['${jsonKey}'] = entity.${fieldName}?.map((v) => v.name).toList();`);
+                } else {
+                    parts.push(`\tdata['${jsonKey}'] = entity.${fieldName}.map((v) => v.name).toList();`);
+                }
             } else if (prop.isNestedObject) {
                 // 对于嵌套对象，根据toJson可空性决定使用 .toJson() 还是 ?.toJson()
                 const isOpenNullable = (this.config as any).isOpenNullable;
                 const isNullableForToJson = (prop as any).isNullableForToJson ?? (isOpenNullable ? true : prop.isNullable);
                 const toJsonOperator = isNullableForToJson ? '?.toJson()' : '.toJson()';
                 parts.push(`\tdata['${jsonKey}'] = entity.${fieldName}${toJsonOperator};`);
+            } else if (prop.isEnum) {
+                // Handle enum types - use .name for serialization
+                const isOpenNullable = (this.config as any).isOpenNullable;
+                const isNullableForToJson = (prop as any).isNullableForToJson ?? (isOpenNullable ? true : prop.isNullable);
+                const nameOperator = isNullableForToJson ? '?.name' : '.name';
+                parts.push(`\tdata['${jsonKey}'] = entity.${fieldName}${nameOperator};`);
             } else {
                 parts.push(`\tdata['${jsonKey}'] = entity.${fieldName};`);
             }
@@ -654,14 +684,17 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
 
         parts.push(`extension ${className}Extension on ${className} {`);
 
-        // If no properties, generate empty extension (like original plugin)
-        if (properties.length === 0) {
+        // Filter out getters for copyWith (getters should not be included in copyWith)
+        const copyableProps = properties.filter(prop => !prop.isGetter);
+
+        // If no copyable properties, generate empty extension (like original plugin)
+        if (copyableProps.length === 0) {
             parts.push('}');
             return parts.join('\n');
         }
 
         // Generate copyWith method - all parameters are nullable in copyWith
-        const params = properties.map(prop => {
+        const params = copyableProps.map(prop => {
             const fieldName = prop.name; // 实际的字段名
 
             // 确保嵌套类型使用简洁的类名（单文件模式）
@@ -683,13 +716,13 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
         parts.push('  }) {');
         parts.push(`    return ${className}()`);
 
-        for (const prop of properties) {
+        for (const prop of copyableProps) {
             const fieldName = prop.name; // 实际的字段名
             parts.push(`      ..${fieldName} = ${fieldName} ?? this.${fieldName}`);
         }
 
         // 最后一个属性后面直接加分号，不单独一行
-        if (properties.length > 0) {
+        if (copyableProps.length > 0) {
             const lastIndex = parts.length - 1;
             parts[lastIndex] = parts[lastIndex] + ';';
         }

@@ -6,6 +6,10 @@ export interface DartProperty {
     isNullable: boolean;
     isLate: boolean;
     originalJsonKey?: string;
+    isGetter?: boolean;
+    serialize?: boolean;
+    deserialize?: boolean;
+    isEnum?: boolean;
 }
 
 export interface DartClassInfo {
@@ -54,20 +58,50 @@ export class DartClassParser {
         for (let i = 0; i < lines.length; i++) {
             const line = lines[i].trim();
 
-            // Skip empty lines, comments, constructors, methods
-            if (!line || line.startsWith('//') || line.includes('(') || line.includes('{') || line.includes('}')) {
+            // Skip empty lines, comments, constructors, methods (but not getters)
+            if (!line || line.startsWith('//') || line.includes('{') || line.includes('}')) {
+                continue;
+            }
+            
+            // Skip regular methods (but not getters)
+            if (line.includes('(') && !line.includes(' get ')) {
                 continue;
             }
 
             // Check for @JSONField annotation on current or previous line
-            let jsonFieldName: string | undefined;
-            const jsonFieldMatch = line.match(/@JSONField\([^)]*name:\s*['"](.*?)['"][^)]*\)/);
+            let jsonFieldInfo: { name?: string; serialize?: boolean; deserialize?: boolean; isEnum?: boolean } = {};
+            const jsonFieldMatch = line.match(/@JSONField\(([^)]*)\)/);
             if (jsonFieldMatch) {
-                jsonFieldName = jsonFieldMatch[1];
+                const params = jsonFieldMatch[1];
+                
+                // Extract name parameter
+                const nameMatch = params.match(/name:\s*['"']([^'"]*)['"']/);
+                if (nameMatch) {
+                    jsonFieldInfo.name = nameMatch[1];
+                }
+                
+                // Extract serialize parameter
+                const serializeMatch = params.match(/\bserialize:\s*(true|false)/);
+                if (serializeMatch) {
+                    jsonFieldInfo.serialize = serializeMatch[1] === 'true';
+                }
+                
+                // Extract deserialize parameter
+                const deserializeMatch = params.match(/\bdeserialize:\s*(true|false)/);
+                if (deserializeMatch) {
+                    jsonFieldInfo.deserialize = deserializeMatch[1] === 'true';
+                }
+                
+                // Extract isEnum parameter
+                const isEnumMatch = params.match(/\bisEnum:\s*(true|false)/);
+                if (isEnumMatch) {
+                    jsonFieldInfo.isEnum = isEnumMatch[1] === 'true';
+                }
+                
                 // If annotation is on same line, extract the property from the rest
                 const restOfLine = line.replace(/@JSONField\([^)]*\)\s*/, '');
                 if (restOfLine.trim()) {
-                    const property = this.parsePropertyLine(restOfLine, jsonFieldName);
+                    const property = this.parsePropertyLine(restOfLine, jsonFieldInfo);
                     if (property) {
                         properties.push(property);
                     }
@@ -78,14 +112,38 @@ export class DartClassParser {
             // Check if previous line had @JSONField annotation
             if (i > 0) {
                 const prevLine = lines[i - 1].trim();
-                const prevJsonFieldMatch = prevLine.match(/@JSONField\([^)]*name:\s*['"](.*?)['"][^)]*\)/);
+                const prevJsonFieldMatch = prevLine.match(/@JSONField\(([^)]*)\)/);
                 if (prevJsonFieldMatch) {
-                    jsonFieldName = prevJsonFieldMatch[1];
+                    const params = prevJsonFieldMatch[1];
+                    
+                    // Extract name parameter
+                    const nameMatch = params.match(/name:\s*['"']([^'"]*)['"']/);
+                    if (nameMatch) {
+                        jsonFieldInfo.name = nameMatch[1];
+                    }
+                    
+                    // Extract serialize parameter
+                    const serializeMatch = params.match(/\bserialize:\s*(true|false)/);
+                    if (serializeMatch) {
+                        jsonFieldInfo.serialize = serializeMatch[1] === 'true';
+                    }
+                    
+                    // Extract deserialize parameter
+                    const deserializeMatch = params.match(/\bdeserialize:\s*(true|false)/);
+                    if (deserializeMatch) {
+                        jsonFieldInfo.deserialize = deserializeMatch[1] === 'true';
+                    }
+                    
+                    // Extract isEnum parameter
+                    const isEnumMatch = params.match(/\bisEnum:\s*(true|false)/);
+                    if (isEnumMatch) {
+                        jsonFieldInfo.isEnum = isEnumMatch[1] === 'true';
+                    }
                 }
             }
 
             // Parse property line
-            const property = this.parsePropertyLine(line, jsonFieldName);
+            const property = this.parsePropertyLine(line, jsonFieldInfo);
             if (property) {
                 properties.push(property);
             }
@@ -97,12 +155,31 @@ export class DartClassParser {
     /**
      * Parse a single property line
      */
-    private parsePropertyLine(line: string, jsonFieldName?: string): DartProperty | null {
+    private parsePropertyLine(line: string, jsonFieldInfo?: { name?: string; serialize?: boolean; deserialize?: boolean; isEnum?: boolean }): DartProperty | null {
         // Remove late keyword and capture if it exists
         const lateMatch = line.match(/^late\s+(.+)$/);
         const cleanLine = lateMatch ? lateMatch[1] : line;
         const isLate = !!lateMatch;
 
+        // Check if this is a getter
+        const getterMatch = cleanLine.match(/^([\w<>,\s]+\??\s*)\s+get\s+(\w+)\s*=>/);
+        if (getterMatch) {
+            const type = getterMatch[1].trim();
+            const name = getterMatch[2];
+            
+            return {
+                name,
+                type: type.replace('?', '').trim(),
+                isNullable: type.endsWith('?'),
+                isLate: false,
+                isGetter: true,
+                originalJsonKey: jsonFieldInfo?.name || name,
+                serialize: jsonFieldInfo?.serialize,
+                deserialize: jsonFieldInfo?.deserialize,
+                isEnum: jsonFieldInfo?.isEnum
+            };
+        }
+        
         // Match property pattern: Type name [= defaultValue];
         const propertyMatch = cleanLine.match(/^([\w<>,\s]+\??)\s+(\w+)(?:\s*=\s*[^;]+)?;?$/);
 
@@ -127,7 +204,11 @@ export class DartClassParser {
             type: cleanType,
             isNullable,
             isLate,
-            originalJsonKey: jsonFieldName || name
+            isGetter: false,
+            originalJsonKey: jsonFieldInfo?.name || name,
+            serialize: jsonFieldInfo?.serialize,
+            deserialize: jsonFieldInfo?.deserialize,
+            isEnum: jsonFieldInfo?.isEnum
         };
     }
     
@@ -142,9 +223,13 @@ export class DartClassParser {
 
             // Determine if this is a nested object
             let isNestedObject = false;
-            if (isArray) {
+            if (prop.isEnum) {
+                // Enum types are not nested objects, even though they're not primitive
+                isNestedObject = false;
+            } else if (isArray) {
                 // For arrays, check if the element type is a nested object
-                isNestedObject = arrayElementType ? !this.isPrimitiveType(arrayElementType) : false;
+                // Enum arrays should not be treated as nested objects
+                isNestedObject = arrayElementType ? !this.isPrimitiveType(arrayElementType) && !this.isEnumType(arrayElementType) : false;
             } else {
                 // For non-arrays, check if the type itself is a nested object
                 isNestedObject = !this.isPrimitiveType(prop.type);
@@ -164,7 +249,11 @@ export class DartClassParser {
                 isNestedObject: isNestedObject,
                 arrayElementType: arrayElementType,
                 isLate: prop.isLate, // Add late information
-                isNullableForToJson: isNullableForToJson // Add separate nullability for toJson
+                isNullableForToJson: isNullableForToJson, // Add separate nullability for toJson
+                isGetter: prop.isGetter, // Add getter information
+                serialize: prop.serialize, // Add serialize information
+                deserialize: prop.deserialize, // Add deserialize information
+                isEnum: prop.isEnum // Add enum information
             };
         });
 
@@ -227,6 +316,16 @@ export class DartClassParser {
     private isPrimitiveType(type: string): boolean {
         const primitiveTypes = ['String', 'int', 'double', 'bool', 'dynamic'];
         return primitiveTypes.includes(type);
+    }
+
+    /**
+     * Check if a type is an enum type
+     * This is a simple heuristic - enum types typically start with uppercase and are not primitive
+     */
+    private isEnumType(type: string): boolean {
+        // Simple heuristic: if it's not a primitive type and starts with uppercase, it might be an enum
+        // This is not perfect but works for most cases
+        return !this.isPrimitiveType(type) && /^[A-Z]/.test(type) && !type.includes('<');
     }
 
     /**
