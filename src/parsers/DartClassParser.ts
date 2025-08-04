@@ -10,12 +10,14 @@ export interface DartProperty {
     serialize?: boolean;
     deserialize?: boolean;
     isEnum?: boolean;
+    copyWith?: boolean;
 }
 
 export interface DartClassInfo {
     className: string;
     properties: DartProperty[];
     hasJsonSerializable: boolean;
+    imports?: string[]; // Add imports information
 }
 
 export class DartClassParser {
@@ -24,6 +26,7 @@ export class DartClassParser {
      */
     parseDartFile(content: string): DartClassInfo[] {
         const classes: DartClassInfo[] = [];
+        const imports = this.extractImports(content);
         
         // Find all classes with @JsonSerializable annotation
         // Support inheritance syntax: class ClassName extends SuperClass {
@@ -39,11 +42,31 @@ export class DartClassParser {
             classes.push({
                 className,
                 properties,
-                hasJsonSerializable: true
+                hasJsonSerializable: true,
+                imports // Add imports to each class
             });
         }
         
         return classes;
+    }
+    
+    /**
+     * Extract import statements from Dart file content
+     */
+    private extractImports(content: string): string[] {
+        const imports: string[] = [];
+        const importPattern = /import\s+['"]([^'"]+)['"]\s*(?:show\s+[^;]+|hide\s+[^;]+|as\s+\w+)?;/g;
+        let match;
+        
+        while ((match = importPattern.exec(content)) !== null) {
+            const importPath = match[1];
+            // Skip Dart SDK imports and generated files
+            if (!importPath.startsWith('dart:') && !importPath.includes('.g.dart')) {
+                imports.push(match[0]); // Store the full import statement
+            }
+        }
+        
+        return imports;
     }
     
     /**
@@ -69,7 +92,7 @@ export class DartClassParser {
             }
 
             // Check for @JSONField annotation on current or previous line
-            let jsonFieldInfo: { name?: string; serialize?: boolean; deserialize?: boolean; isEnum?: boolean } = {};
+            let jsonFieldInfo: { name?: string; serialize?: boolean; deserialize?: boolean; isEnum?: boolean; copyWith?: boolean } = {};
             const jsonFieldMatch = line.match(/@JSONField\(([^)]*)\)/);
             if (jsonFieldMatch) {
                 const params = jsonFieldMatch[1];
@@ -96,6 +119,12 @@ export class DartClassParser {
                 const isEnumMatch = params.match(/\bisEnum:\s*(true|false)/);
                 if (isEnumMatch) {
                     jsonFieldInfo.isEnum = isEnumMatch[1] === 'true';
+                }
+                
+                // Extract copyWith parameter
+                const copyWithMatch = params.match(/\bcopyWith:\s*(true|false)/);
+                if (copyWithMatch) {
+                    jsonFieldInfo.copyWith = copyWithMatch[1] === 'true';
                 }
                 
                 // If annotation is on same line, extract the property from the rest
@@ -139,6 +168,12 @@ export class DartClassParser {
                     if (isEnumMatch) {
                         jsonFieldInfo.isEnum = isEnumMatch[1] === 'true';
                     }
+                    
+                    // Extract copyWith parameter
+                    const copyWithMatch = params.match(/\bcopyWith:\s*(true|false)/);
+                    if (copyWithMatch) {
+                        jsonFieldInfo.copyWith = copyWithMatch[1] === 'true';
+                    }
                 }
             }
 
@@ -155,7 +190,7 @@ export class DartClassParser {
     /**
      * Parse a single property line
      */
-    private parsePropertyLine(line: string, jsonFieldInfo?: { name?: string; serialize?: boolean; deserialize?: boolean; isEnum?: boolean }): DartProperty | null {
+    private parsePropertyLine(line: string, jsonFieldInfo?: { name?: string; serialize?: boolean; deserialize?: boolean; isEnum?: boolean; copyWith?: boolean }): DartProperty | null {
         // Remove late keyword and capture if it exists
         const lateMatch = line.match(/^late\s+(.+)$/);
         const cleanLine = lateMatch ? lateMatch[1] : line;
@@ -176,7 +211,8 @@ export class DartClassParser {
                 originalJsonKey: jsonFieldInfo?.name || name,
                 serialize: jsonFieldInfo?.serialize,
                 deserialize: jsonFieldInfo?.deserialize,
-                isEnum: jsonFieldInfo?.isEnum
+                isEnum: jsonFieldInfo?.isEnum,
+                copyWith: jsonFieldInfo?.copyWith
             };
         }
         
@@ -208,7 +244,8 @@ export class DartClassParser {
             originalJsonKey: jsonFieldInfo?.name || name,
             serialize: jsonFieldInfo?.serialize,
             deserialize: jsonFieldInfo?.deserialize,
-            isEnum: jsonFieldInfo?.isEnum
+            isEnum: jsonFieldInfo?.isEnum,
+            copyWith: jsonFieldInfo?.copyWith
         };
     }
     
@@ -228,8 +265,8 @@ export class DartClassParser {
                 isNestedObject = false;
             } else if (isArray) {
                 // For arrays, check if the element type is a nested object
-                // Enum arrays should not be treated as nested objects
-                isNestedObject = arrayElementType ? !this.isPrimitiveType(arrayElementType) && !this.isEnumType(arrayElementType) : false;
+                // Only exclude if explicitly marked as enum, not based on heuristics
+                isNestedObject = arrayElementType ? !this.isPrimitiveType(arrayElementType) : false;
             } else {
                 // For non-arrays, check if the type itself is a nested object
                 isNestedObject = !this.isPrimitiveType(prop.type);
@@ -253,7 +290,8 @@ export class DartClassParser {
                 isGetter: prop.isGetter, // Add getter information
                 serialize: prop.serialize, // Add serialize information
                 deserialize: prop.deserialize, // Add deserialize information
-                isEnum: prop.isEnum // Add enum information
+                isEnum: prop.isEnum, // Add enum information
+                copyWith: prop.copyWith // Add copyWith information
             };
         });
 

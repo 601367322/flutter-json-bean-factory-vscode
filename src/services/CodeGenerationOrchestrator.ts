@@ -166,45 +166,31 @@ export class CodeGenerationOrchestrator {
         const projectRoot = this.projectManager.getFlutterProjectRoot()!;
         const content: string[] = [];
 
-        // Add imports
-        content.push(`import 'package:${packageName}/generated/json/base/json_convert_content.dart';`);
-        content.push(entityFile.importStatement);
+        // Add imports with deduplication
+        const importSet = new Set<string>();
+        
+        // Always include json_convert_content
+        importSet.add(`import 'package:${packageName}/generated/json/base/json_convert_content.dart';`);
+        
+        // Add entity file import
+        importSet.add(entityFile.importStatement);
 
-        // Collect all nested types that need imports (exclude types defined in current file)
-        const nestedTypes = new Set<string>();
-        const currentFileClasses = new Set(entityFile.classes.map(cls => cls.className));
-
-        for (const dartClass of entityFile.classes) {
-            // Convert DartClassInfo to JsonClass for processing
-            const jsonClass = this.convertDartClassToJsonClass(dartClass);
-            for (const prop of jsonClass.properties) {
-                if (prop.isNestedObject) {
-                    let nestedTypeName: string;
-                    if (prop.isArray && prop.arrayElementType) {
-                        nestedTypeName = prop.arrayElementType;
-                    } else {
-                        nestedTypeName = prop.dartType;
-                    }
-
-                    // Only add import if the type is not defined in the current file
-                    if (!currentFileClasses.has(nestedTypeName)) {
-                        nestedTypes.add(nestedTypeName);
-                    }
+        // Add imports from the original entity file (for nested types)
+        if (entityFile.classes.length > 0 && entityFile.classes[0].imports) {
+            for (const importStatement of entityFile.classes[0].imports) {
+                // Skip JSON annotation imports, generated files, and json_field imports
+                if (!importStatement.includes('json_annotation') && 
+                    !importStatement.includes('.g.dart') &&
+                    !importStatement.includes('json_field.dart')) {
+                    importSet.add(importStatement);
                 }
             }
         }
 
-        // Add imports for external nested types by finding their actual file locations
-        for (const nestedType of nestedTypes) {
-            const actualFilePath = this.fileScanner.findActualFilePathForType(nestedType, projectRoot);
-            if (actualFilePath) {
-                content.push(`import 'package:${packageName}/${actualFilePath}';`);
-            } else {
-                // Fallback to snake_case conversion if file not found
-                const snakeTypeName = this.projectManager.toSnakeCase(nestedType);
-                content.push(`import 'package:${packageName}/modal/response/${snakeTypeName}.dart';`);
-            }
-        }
+        // Add all unique imports to content
+        importSet.forEach(importStatement => {
+            content.push(importStatement);
+        });
 
         content.push('');
 

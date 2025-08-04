@@ -14,6 +14,7 @@ export interface JsonProperty {
     serialize?: boolean;  // @JSONField serialize参数
     deserialize?: boolean;  // @JSONField deserialize参数
     isEnum?: boolean;  // @JSONField isEnum参数
+    copyWith?: boolean;  // @JSONField copyWith参数
 }
 
 export interface JsonClass {

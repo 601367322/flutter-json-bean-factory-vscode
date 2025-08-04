@@ -434,7 +434,7 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
 
             // 添加@JSONField注解（如果需要），使用单引号（原版风格）
             if (needsJsonField) {
-                parts.push(`\t@JSONField(name: '${prop.originalJsonKey}')`);
+                parts.push(`  @JSONField(name: '${prop.originalJsonKey}')`);
             }
 
             // 使用驼峰命名的字段名
@@ -466,50 +466,50 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
                 // 对象字段的处理：如果是nullable则不使用late，否则使用late关键字
                 if (isOpenNullable && prop.dartType !== 'dynamic') {
                     // 如果开启了nullable选项，嵌套对象字段不使用late关键字
-                    parts.push(`\t${fieldType} ${fieldName};`);
+                    parts.push(`  ${fieldType} ${fieldName};`);
                 } else {
                     // 否则使用late关键字（原版风格）
-                    parts.push(`\t${fieldType.includes('late ') ? '' : 'late '}${fieldType} ${fieldName};`);
+                    parts.push(`  ${fieldType.includes('late ') ? '' : 'late '}${fieldType} ${fieldName};`);
                 }
             } else if (prop.dartType === 'dynamic') {
                 // dynamic字段不设置默认值（原版风格）
-                parts.push(`\t${fieldType} ${fieldName};`);
+                parts.push(`  ${fieldType} ${fieldName};`);
             } else {
                 // 其他字段的处理逻辑
                 const correctedDefaultValue = prop.isArray ? '[]' : defaultValue;
 
                 if (isOpenNullable && prop.dartType !== 'dynamic') {
                     // 如果是nullable字段，不设置默认值（原版风格）
-                    parts.push(`\t${fieldType} ${fieldName};`);
+                    parts.push(`  ${fieldType} ${fieldName};`);
                 } else if (setDefault) {
                     // 如果选择了默认值，设置默认值
-                    parts.push(`\t${fieldType} ${fieldName} = ${correctedDefaultValue};`);
+                    parts.push(`  ${fieldType} ${fieldName} = ${correctedDefaultValue};`);
                 } else {
                     // 如果既不选择默认值，也不选择nullable，使用late关键字
-                    parts.push(`\tlate ${fieldType} ${fieldName};`);
+                    parts.push(`  late ${fieldType} ${fieldName};`);
                 }
             }
         }
 
         parts.push('');
-        parts.push(`\t${className}();`);
+        parts.push(`  ${className}();`);
         parts.push('');
 
         // Add factory fromJson method that calls global function
         const functionName = `$${className}FromJson`;
-        parts.push(`\tfactory ${className}.fromJson(Map<String, dynamic> json) => ${functionName}(json);`);
+        parts.push(`  factory ${className}.fromJson(Map<String, dynamic> json) => ${functionName}(json);`);
         parts.push('');
 
         // Add toJson method that calls global function
         const toJsonFunctionName = `$${className}ToJson`;
-        parts.push(`\tMap<String, dynamic> toJson() => ${toJsonFunctionName}(this);`);
+        parts.push(`  Map<String, dynamic> toJson() => ${toJsonFunctionName}(this);`);
         parts.push('');
 
         // Add toString method using jsonEncode
-        parts.push('\t@override');
-        parts.push('\tString toString() {');
-        parts.push('\t\treturn jsonEncode(this);');
-        parts.push('\t}');
+        parts.push('  @override');
+        parts.push('  String toString() {');
+        parts.push('    return jsonEncode(this);');
+        parts.push('  }');
 
         parts.push('}');
 
@@ -553,7 +553,7 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
 
         parts.push(`${className} ${functionName}(Map<String, dynamic> json) {`);
         const instanceName = className.charAt(0).toLowerCase() + className.slice(1);
-        parts.push(`\tfinal ${className} ${instanceName} = ${className}();`);
+        parts.push(`  final ${className} ${instanceName} = ${className}();`);
 
         for (const prop of properties) {
             // Skip getters and fields marked with deserialize: false
@@ -572,31 +572,31 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
                 if (prop.isNestedObject && prop.arrayElementType) {
                     // 对于嵌套对象数组，使用简洁的类名（单文件模式）
                     const simpleElementType = this.getNestedClassName(prop.arrayElementType);
-                    parts.push(`\tfinal List<${simpleElementType}>${typeNullString} ${varName} = (json['${jsonKey}'] as List<dynamic>?)?.map(
+                    parts.push(`  final List<${simpleElementType}>${typeNullString} ${varName} = (json['${jsonKey}'] as List<dynamic>?)?.map(
                       (e) => jsonConvert.convert<${simpleElementType}>(e) as ${simpleElementType}).toList();`);
                 } else {
                     // 对于基础类型数组
                     if (prop.arrayElementType === 'dynamic') {
                         // 对于List<dynamic>，使用原插件的特殊处理方式
-                        parts.push(`\tfinal List<${prop.arrayElementType}>${typeNullString} ${varName} = (json['${jsonKey}'] as List<dynamic>?)?.map(
+                        parts.push(`  final List<${prop.arrayElementType}>${typeNullString} ${varName} = (json['${jsonKey}'] as List<dynamic>?)?.map(
                           (e) => e).toList();`);
                     } else {
-                        parts.push(`\tfinal List<${prop.arrayElementType}>${typeNullString} ${varName} = jsonConvert.convert<List<${prop.arrayElementType}>>(json['${jsonKey}']);`);
+                        parts.push(`  final List<${prop.arrayElementType}>${typeNullString} ${varName} = jsonConvert.convert<List<${prop.arrayElementType}>>(json['${jsonKey}']);`);
                     }
                 }
             } else if (prop.isNestedObject && prop.nestedClass) {
                 const simpleType = this.getNestedClassName(prop.dartType);
-                parts.push(`\tfinal ${simpleType}${typeNullString} ${varName} = jsonConvert.convert<${simpleType}>(json['${jsonKey}']);`);
+                parts.push(`  final ${simpleType}${typeNullString} ${varName} = jsonConvert.convert<${simpleType}>(json['${jsonKey}']);`);
             } else if (prop.isEnum) {
                 // Handle enum types with enumConvert parameter
-                parts.push(`\tfinal ${prop.dartType}${typeNullString} ${varName} = jsonConvert.convert<${prop.dartType}>(
+                parts.push(`  final ${prop.dartType}${typeNullString} ${varName} = jsonConvert.convert<${prop.dartType}>(
       json['${jsonKey}'], enumConvert: (v) => ${prop.dartType}.values.byName(v));`);
             } else {
                 // 对于dynamic类型，直接从JSON获取值，不使用jsonConvert.convert
                 if (prop.dartType === 'dynamic') {
-                    parts.push(`\tfinal ${prop.dartType} ${varName} = json['${jsonKey}'];`);
+                    parts.push(`  final ${prop.dartType} ${varName} = json['${jsonKey}'];`);
                 } else {
-                    parts.push(`\tfinal ${prop.dartType}${typeNullString} ${varName} = jsonConvert.convert<${prop.dartType}>(json['${jsonKey}']);`);
+                    parts.push(`  final ${prop.dartType}${typeNullString} ${varName} = jsonConvert.convert<${prop.dartType}>(json['${jsonKey}']);`);
                 }
             }
 
@@ -604,18 +604,18 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
             const isOpenNullable = (this.config as any).isOpenNullable;
             if (isOpenNullable) {
                 // 当开启nullable选项时，仍然需要null检查，但字段本身是nullable的
-                parts.push(`\tif (${varName} != null) {`);
-                parts.push(`\t\t${instanceName}.${fieldName} = ${varName};`);
-                parts.push(`\t}`);
+                parts.push(`  if (${varName} != null) {`);
+                parts.push(`    ${instanceName}.${fieldName} = ${varName};`);
+                parts.push(`  }`);
             } else {
                 // 原来的逻辑：所有类型都需要null检查（包括dynamic）
-                parts.push(`\tif (${varName} != null) {`);
-                parts.push(`\t\t${instanceName}.${fieldName} = ${varName};`);
-                parts.push(`\t}`);
+                parts.push(`  if (${varName} != null) {`);
+                parts.push(`    ${instanceName}.${fieldName} = ${varName};`);
+                parts.push(`  }`);
             }
         }
 
-        parts.push(`\treturn ${instanceName};`);
+        parts.push(`  return ${instanceName};`);
         parts.push('}');
 
         return parts.join('\n');
@@ -626,7 +626,7 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
         const parts = [];
 
         parts.push(`Map<String, dynamic> ${functionName}(${className} entity) {`);
-        parts.push('\tfinal Map<String, dynamic> data = <String, dynamic>{};');
+        parts.push('  final Map<String, dynamic> data = <String, dynamic>{};');
 
         for (const prop of properties) {
             // Skip getters and fields marked with serialize: false
@@ -643,37 +643,37 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
                 const isOpenNullable = (this.config as any).isOpenNullable;
                 const isNullableForToJson = (prop as any).isNullableForToJson ?? (isOpenNullable ? true : prop.isNullable);
                 if (isNullableForToJson) {
-                    parts.push(`\tdata['${jsonKey}'] = entity.${fieldName}?.map((v) => v.toJson()).toList();`);
+                    parts.push(`  data['${jsonKey}'] = entity.${fieldName}?.map((v) => v.toJson()).toList();`);
                 } else {
-                    parts.push(`\tdata['${jsonKey}'] = entity.${fieldName}.map((v) => v.toJson()).toList();`);
+                    parts.push(`  data['${jsonKey}'] = entity.${fieldName}.map((v) => v.toJson()).toList();`);
                 }
             } else if (prop.isArray && prop.isEnum) {
                 // Handle enum arrays - use .name for each element
                 const isOpenNullable = (this.config as any).isOpenNullable;
                 const isNullableForToJson = (prop as any).isNullableForToJson ?? (isOpenNullable ? true : prop.isNullable);
                 if (isNullableForToJson) {
-                    parts.push(`\tdata['${jsonKey}'] = entity.${fieldName}?.map((v) => v.name).toList();`);
+                    parts.push(`  data['${jsonKey}'] = entity.${fieldName}?.map((v) => v.name).toList();`);
                 } else {
-                    parts.push(`\tdata['${jsonKey}'] = entity.${fieldName}.map((v) => v.name).toList();`);
+                    parts.push(`  data['${jsonKey}'] = entity.${fieldName}.map((v) => v.name).toList();`);
                 }
             } else if (prop.isNestedObject) {
                 // 对于嵌套对象，根据toJson可空性决定使用 .toJson() 还是 ?.toJson()
                 const isOpenNullable = (this.config as any).isOpenNullable;
                 const isNullableForToJson = (prop as any).isNullableForToJson ?? (isOpenNullable ? true : prop.isNullable);
                 const toJsonOperator = isNullableForToJson ? '?.toJson()' : '.toJson()';
-                parts.push(`\tdata['${jsonKey}'] = entity.${fieldName}${toJsonOperator};`);
+                parts.push(`  data['${jsonKey}'] = entity.${fieldName}${toJsonOperator};`);
             } else if (prop.isEnum) {
                 // Handle enum types - use .name for serialization
                 const isOpenNullable = (this.config as any).isOpenNullable;
                 const isNullableForToJson = (prop as any).isNullableForToJson ?? (isOpenNullable ? true : prop.isNullable);
                 const nameOperator = isNullableForToJson ? '?.name' : '.name';
-                parts.push(`\tdata['${jsonKey}'] = entity.${fieldName}${nameOperator};`);
+                parts.push(`  data['${jsonKey}'] = entity.${fieldName}${nameOperator};`);
             } else {
-                parts.push(`\tdata['${jsonKey}'] = entity.${fieldName};`);
+                parts.push(`  data['${jsonKey}'] = entity.${fieldName};`);
             }
         }
 
-        parts.push('\treturn data;');
+        parts.push('  return data;');
         parts.push('}');
 
         return parts.join('\n');
@@ -684,8 +684,8 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
 
         parts.push(`extension ${className}Extension on ${className} {`);
 
-        // Filter out getters for copyWith (getters should not be included in copyWith)
-        const copyableProps = properties.filter(prop => !prop.isGetter);
+        // Filter out getters and fields marked with copyWith: false
+        const copyableProps = properties.filter(prop => !prop.isGetter && prop.copyWith !== false);
 
         // If no copyable properties, generate empty extension (like original plugin)
         if (copyableProps.length === 0) {
@@ -858,7 +858,7 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
 
             // Add entries for all classes in this file
             for (const dartClass of entityFile.classes) {
-                classEntries.push(`\t\t(${dartClass.className}).toString(): ${dartClass.className}.fromJson,`);
+                classEntries.push(`    (${dartClass.className}).toString(): ${dartClass.className}.fromJson,`);
             }
         }
 
@@ -866,9 +866,9 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
         const listChildTypeEntries = [];
         for (const entityFile of allEntityFiles) {
             for (const dartClass of entityFile.classes) {
-                listChildTypeEntries.push(`\t\tif(<${dartClass.className}>[] is M){`);
-                listChildTypeEntries.push(`\t\t\treturn data.map<${dartClass.className}>((Map<String, dynamic> e) => ${dartClass.className}.fromJson(e)).toList() as M;`);
-                listChildTypeEntries.push(`\t\t}`);
+                listChildTypeEntries.push(`    if(<${dartClass.className}>[] is M){`);
+                listChildTypeEntries.push(`      return data.map<${dartClass.className}>((Map<String, dynamic> e) => ${dartClass.className}.fromJson(e)).toList() as M;`);
+                listChildTypeEntries.push(`    }`);
             }
         }
 
@@ -917,7 +917,7 @@ class JsonConvert {
       convertFuncMap = JsonConvertClassCollection();
     }
   }
-\t
+  
   T? convert<T>(dynamic value, {EnumConvertFunction? enumConvert}) {
     if (value == null) {
       return null;
