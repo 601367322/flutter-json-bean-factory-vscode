@@ -675,6 +675,7 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
                 const nameOperator = isNullableForToJson ? '?.name' : '.name';
                 parts.push(`  data['${jsonKey}'] = entity.${fieldName}${nameOperator};`);
             } else {
+                // For basic types (String, int, double, num, bool, dynamic), assign directly
                 parts.push(`  data['${jsonKey}'] = entity.${fieldName};`);
             }
         }

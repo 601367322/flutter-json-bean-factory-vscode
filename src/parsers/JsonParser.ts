@@ -146,7 +146,12 @@ export class JsonParser {
             case 'string':
                 return 'String';
             case 'number':
-                return Number.isInteger(value) ? 'int' : 'double';
+                // Support for num type: check for decimal values to determine between int, double, or num
+                if (Number.isInteger(value)) {
+                    return 'int';
+                } else {
+                    return 'double';
+                }
             case 'boolean':
                 return 'bool';
             case 'null':
