@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [1.0.12] - 2025-08-06
 - 修复List基础类型的转换问题，如List<String>、List<int>
 
+## [1.0.11] - 2025-08-04
+
+- 修复num类型转换
+
 ## [1.0.10] - 2025-08-04
 
 - 修复JSONFiled不生效的问题

@@ -310,6 +310,7 @@ export class DartClassParser {
             'String': 'String',
             'int': 'int',
             'double': 'double',
+            'num': 'num',
             'bool': 'bool',
             'DateTime': 'String', // Usually serialized as string
             'List': 'List',
@@ -352,7 +353,7 @@ export class DartClassParser {
      * Check if a type is a primitive type
      */
     private isPrimitiveType(type: string): boolean {
-        const primitiveTypes = ['String', 'int', 'double', 'bool', 'num', 'dynamic'];
+        const primitiveTypes = ['String', 'int', 'double', 'num', 'bool', 'dynamic'];
         return primitiveTypes.includes(type);
     }
 
