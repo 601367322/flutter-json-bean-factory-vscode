@@ -352,7 +352,7 @@ export class DartClassParser {
      * Check if a type is a primitive type
      */
     private isPrimitiveType(type: string): boolean {
-        const primitiveTypes = ['String', 'int', 'double', 'bool', 'dynamic'];
+        const primitiveTypes = ['String', 'int', 'double', 'bool', 'num', 'dynamic'];
         return primitiveTypes.includes(type);
     }
 

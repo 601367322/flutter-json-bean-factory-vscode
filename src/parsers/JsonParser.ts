@@ -146,6 +146,10 @@ export class JsonParser {
             case 'string':
                 return 'String';
             case 'number':
+                // 根据配置决定使用 num 还是 int/double
+                if (this.config.useNumType) {
+                    return 'num';
+                }
                 return Number.isInteger(value) ? 'int' : 'double';
             case 'boolean':
                 return 'bool';

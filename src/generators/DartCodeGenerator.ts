@@ -587,7 +587,9 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
                         parts.push(`  final List<${prop.arrayElementType}>${typeNullString} ${varName} = (json['${jsonKey}'] as List<dynamic>?)?.map(
                           (e) => e).toList();`);
                     } else {
-                        parts.push(`  final List<${prop.arrayElementType}>${typeNullString} ${varName} = jsonConvert.convert<List<${prop.arrayElementType}>>(json['${jsonKey}']);`);
+                        // 对于基础类型List，使用正确的map转换方式
+                        parts.push(`  final List<${prop.arrayElementType}>${typeNullString} ${varName} = (json['${jsonKey}'] as List<dynamic>?)?.map(
+                          (e) => jsonConvert.convert<${prop.arrayElementType}>(e) as ${prop.arrayElementType}).toList();`);
                     }
                 }
             } else if (prop.isNestedObject && prop.nestedClass) {
@@ -643,7 +645,7 @@ export 'package:${this.packageName}/generated/json/${snakeClassName}.g.dart';`;
 
             const jsonKey = prop.originalJsonKey; // 原始JSON key
             const fieldName = prop.name; // 实际的字段名（如 groupId, userId）
-
+            
             if (prop.isArray && prop.isNestedObject) {
                 // 对于数组字段，根据toJson可空性决定使用 .map() 还是 ?.map()
                 const isOpenNullable = (this.config as any).isOpenNullable;
